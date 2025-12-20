@@ -20,12 +20,20 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
     return () => clearInterval(timer);
   }, [rollingImages.length, interval]);
 
-  const handleButtonClick = (image: typeof rollingImages[0]) => {
+  // 🎯 이미지 또는 버튼 클릭 핸들러
+  const handleImageClick = (image: typeof rollingImages[0]) => {
+    // 버튼이 없고 링크가 있으면 이미지 전체를 클릭 가능하게
     if (!image.button_link) return;
     
     if (image.link_type === 'external') {
-      window.open(image.button_link, '_blank', 'noopener,noreferrer');
+      // 외부 링크: http/https가 없으면 추가
+      let url = image.button_link;
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = 'https://' + url;
+      }
+      window.open(url, '_blank', 'noopener,noreferrer');
     } else {
+      // 내부 페이지 이동
       onNavigate(image.button_link as MenuType);
     }
   };
@@ -45,12 +53,15 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
         {rollingImages.length > 0 ? rollingImages.map((img, idx) => (
           <div 
             key={img.id}
-            className={`absolute inset-0 transition-all duration-1000 ease-in-out ${idx === activeIndex ? 'opacity-100 scale-100' : 'opacity-0 scale-105'}`}
+            className={`absolute inset-0 transition-all duration-1000 ease-in-out ${
+              idx === activeIndex ? 'opacity-100 scale-100' : 'opacity-0 scale-105'
+            } ${img.button_link ? 'cursor-pointer' : ''}`}
+            onClick={() => handleImageClick(img)}
           >
             <img src={img.image_url} className="w-full h-full object-cover" alt="banner" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
             {(img.subtitle || img.title || img.button_text) && (
-              <div className="absolute bottom-12 left-8 md:left-20 text-white max-w-4xl">
+              <div className="absolute bottom-12 left-8 md:left-20 text-white max-w-4xl pointer-events-none">
                 {img.subtitle && (
                   <p className="text-kpia-orange font-black text-xs uppercase tracking-[0.4em] mb-3">
                     {img.subtitle}
@@ -63,8 +74,11 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
                 )}
                 {img.button_text && img.button_link && (
                   <button 
-                    onClick={() => handleButtonClick(img)}
-                    className="bg-kpia-orange text-white px-10 py-4 rounded-full font-black text-xs uppercase tracking-widest hover:bg-orange-600 transition-all shadow-xl"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleImageClick(img);
+                    }}
+                    className="bg-kpia-orange text-white px-10 py-4 rounded-full font-black text-xs uppercase tracking-widest hover:bg-orange-600 transition-all shadow-xl pointer-events-auto"
                   >
                     {img.button_text}
                   </button>
@@ -83,14 +97,14 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
           <>
             <button
               onClick={handlePrevious}
-              className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/20 hover:bg-white/40 backdrop-blur-sm rounded-full flex items-center justify-center text-white transition-all opacity-0 group-hover:opacity-100"
+              className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/20 hover:bg-white/40 backdrop-blur-sm rounded-full flex items-center justify-center text-white transition-all opacity-0 group-hover:opacity-100 z-10"
               aria-label="Previous"
             >
               <i className="fas fa-chevron-left"></i>
             </button>
             <button
               onClick={handleNext}
-              className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/20 hover:bg-white/40 backdrop-blur-sm rounded-full flex items-center justify-center text-white transition-all opacity-0 group-hover:opacity-100"
+              className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/20 hover:bg-white/40 backdrop-blur-sm rounded-full flex items-center justify-center text-white transition-all opacity-0 group-hover:opacity-100 z-10"
               aria-label="Next"
             >
               <i className="fas fa-chevron-right"></i>
@@ -100,7 +114,7 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
         
         {/* Pagination dots */}
         {rollingImages.length > 1 && (
-          <div className="absolute bottom-10 right-12 flex gap-2">
+          <div className="absolute bottom-10 right-12 flex gap-2 z-10">
             {rollingImages.map((_, idx) => (
               <button 
                 key={idx}

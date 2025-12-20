@@ -101,7 +101,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       }
 
       if (data && data.length > 0) {
-        // Supabase의 snake_case를 camelCase로 변환, null을 undefined로 처리
         const transformedData = data.map((item: any) => ({
           id: item.id,
           image_url: item.image_url,
@@ -113,7 +112,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           display_order: item.display_order || 1,
         }));
 
-        console.log('Loaded rolling images:', transformedData); // 디버깅용
+        console.log('Loaded rolling images:', transformedData);
 
         setSettings(prev => ({
           ...prev,
@@ -125,21 +124,56 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, []);
 
+  // Supabase에서 inquiries 로드
+  const loadInquiries = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('inquiries')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Failed to load inquiries:', error);
+        return;
+      }
+
+      if (data && data.length > 0) {
+        setInquiries(data);
+        console.log('Loaded inquiries from Supabase:', data.length);
+      }
+    } catch (e) {
+      console.error('Error loading inquiries:', e);
+    }
+  }, []);
+
+  // Supabase에서 admin password 로드
+  const loadAdminPassword = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('admin_settings')
+        .select('*')
+        .eq('setting_key', 'admin_password')
+        .single();
+
+      if (!error && data) {
+        const password = data.setting_value?.password || 'password';
+        setSettings(prev => ({ ...prev, adminPassword: password }));
+        console.log('Loaded admin password from Supabase');
+      }
+    } catch (e) {
+      console.error('Error loading admin password:', e);
+    }
+  }, []);
+
   // localStorage + Supabase settings 로드
   useEffect(() => {
     const loadFromStorageAndSupabase = async () => {
       try {
         const savedBbs = localStorage.getItem(STORAGE_KEYS.BBS);
-        const savedInquiries = localStorage.getItem(
-          STORAGE_KEYS.INQUIRIES
-        );
         const savedAdmin = localStorage.getItem('kpii_is_admin');
 
         if (savedBbs) setBbsData(JSON.parse(savedBbs));
-        if (savedInquiries)
-          setInquiries(JSON.parse(savedInquiries));
-        if (savedAdmin)
-          setIsAdminState(savedAdmin === 'true');
+        if (savedAdmin) setIsAdminState(savedAdmin === 'true');
 
         // Supabase settings를 먼저 로드 (우선순위)
         const { data, error } = await supabase
@@ -169,13 +203,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         );
         if (savedSettings) {
           const parsed = JSON.parse(savedSettings);
-          // 이미지 URL은 Supabase 값 유지, 나머지만 병합
-          const { logoImageUrl, founderImageUrl, chairmanImageUrl, ...otherSettings } = parsed;
+          const { logoImageUrl, founderImageUrl, chairmanImageUrl, adminPassword, ...otherSettings } = parsed;
           setSettings(prev => ({ ...prev, ...otherSettings }));
         }
 
         // Rolling images 로드
         await loadRollingImages();
+
+        // Inquiries 로드 (Supabase 우선)
+        await loadInquiries();
+
+        // Admin password 로드
+        await loadAdminPassword();
+
       } catch (e) {
         console.error('Data recovery failed', e);
       } finally {
@@ -184,9 +224,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     };
 
     loadFromStorageAndSupabase();
-  }, [loadRollingImages]);
+  }, [loadRollingImages, loadInquiries, loadAdminPassword]);
 
-  // localStorage 저장
+  // localStorage 저장 (비밀번호 제외)
   useEffect(() => {
     if (!isInitialized) return;
 
@@ -195,21 +235,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         STORAGE_KEYS.BBS,
         JSON.stringify(bbsData)
       );
+      
+      // settings에서 adminPassword 제외하고 저장
+      const { adminPassword, ...settingsToSave } = settings;
       localStorage.setItem(
         STORAGE_KEYS.SETTINGS,
-        JSON.stringify(settings)
+        JSON.stringify(settingsToSave)
       );
-      localStorage.setItem(
-        STORAGE_KEYS.INQUIRIES,
-        JSON.stringify(inquiries)
-      );
+      
+      // inquiries는 localStorage에 저장하지 않음 (Supabase만 사용)
     } catch (e) {
       console.warn(
         'Storage quota exceeded. Base64 images may be too large.',
         e
       );
     }
-  }, [bbsData, settings, inquiries, isInitialized]);
+  }, [bbsData, settings, isInitialized]);
 
   const setIsAdmin = useCallback((val: boolean) => {
     setIsAdminState(val);
@@ -236,15 +277,56 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     );
   }, []);
 
-  // Inquiry
-  const addInquiry = useCallback((inq: Inquiry) => {
-    setInquiries(prev => [inq, ...prev]);
+  // Inquiry (Supabase 동기화)
+  const addInquiry = useCallback(async (inq: Inquiry) => {
+    try {
+      // Supabase에 저장
+      const { error } = await supabase
+        .from('inquiries')
+        .insert([{
+          id: inq.id,
+          title: inq.title,
+          content: inq.content,
+          date: inq.date,
+          status: inq.status,
+        }]);
+
+      if (error) {
+        console.error('Failed to save inquiry to Supabase:', error);
+        throw error;
+      }
+
+      // 로컬 state 업데이트
+      setInquiries(prev => [inq, ...prev]);
+      console.log('Inquiry saved to Supabase successfully');
+    } catch (e) {
+      console.error('Error adding inquiry:', e);
+      alert('문의 저장에 실패했습니다. 다시 시도해주세요.');
+    }
   }, []);
 
-  const deleteInquiry = useCallback((id: string) => {
-    setInquiries(prev =>
-      prev.filter(inq => inq.id !== id)
-    );
+  const deleteInquiry = useCallback(async (id: string) => {
+    try {
+      // Supabase에서 삭제
+      const { error } = await supabase
+        .from('inquiries')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.error('Failed to delete inquiry from Supabase:', error);
+        throw error;
+      }
+
+      // 로컬 state 업데이트
+      setInquiries(prev =>
+        prev.filter(inq => inq.id !== id)
+      );
+      console.log('Inquiry deleted from Supabase successfully');
+    } catch (e) {
+      console.error('Error deleting inquiry:', e);
+      alert('문의 삭제에 실패했습니다.');
+    }
   }, []);
 
   // Settings
@@ -260,11 +342,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   }, []);
 
   const updateAdminPassword = useCallback(
-    (password: string) => {
-      setSettings(prev => ({
-        ...prev,
-        adminPassword: password,
-      }));
+    async (password: string) => {
+      try {
+        // Supabase에 저장
+        const { error } = await supabase
+          .from('admin_settings')
+          .upsert({
+            setting_key: 'admin_password',
+            setting_value: { password },
+          }, {
+            onConflict: 'setting_key'
+          });
+
+        if (error) {
+          console.error('Failed to save password to Supabase:', error);
+          throw error;
+        }
+
+        // 로컬 state 업데이트
+        setSettings(prev => ({
+          ...prev,
+          adminPassword: password,
+        }));
+        
+        console.log('Admin password saved to Supabase successfully');
+      } catch (e) {
+        console.error('Error updating admin password:', e);
+        alert('비밀번호 저장에 실패했습니다.');
+      }
     },
     []
   );
@@ -285,7 +390,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         }
 
         if (data) {
-          // Supabase의 snake_case를 camelCase로 변환
           const transformedData: RollingImage = {
             id: data.id,
             image_url: data.image_url,
