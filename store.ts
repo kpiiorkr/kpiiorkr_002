@@ -10,7 +10,6 @@ import {
   BBSEntry,
   RollingImage,
   AppSettings,
-  MenuType,
   Inquiry,
 } from './types.ts';
 
@@ -33,26 +32,31 @@ interface AppContextType {
   settings: AppSettings;
   isAdmin: boolean;
   isSyncing: boolean;
+
   setIsAdmin: (val: boolean) => void;
-  addBBSEntry: (entry: Omit<BBSEntry, 'id' | 'createdAt'>) => void;
-  updateBBSEntry: (
-    id: string,
-    updates: Partial<BBSEntry>
-  ) => void;
+
+  addBBSEntry: (entry: BBSEntry) => void;
+  updateBBSEntry: (entry: BBSEntry) => void;
   deleteBBSEntry: (id: string) => void;
-  addInquiry: (inquiry: Omit<Inquiry, 'id' | 'createdAt'>) => void;
+
+  addInquiry: (inquiry: Inquiry) => void;
   deleteInquiry: (id: string) => void;
+
   updateSettings: (updates: Partial<AppSettings>) => void;
-  addRollingImage: (image: Omit<RollingImage, 'id'>) => void;
+  updateAdminPassword: (password: string) => void;
+
+  addRollingImage: (image: RollingImage) => void;
   updateRollingImage: (
-    id: string,
-    updates: Partial<RollingImage>
+    id: number,
+    imageUrl: string,
+    link: string
   ) => void;
-  deleteRollingImage: (id: string) => void;
+  deleteRollingImage: (id: number) => void;
+
   updateProfileImage: (
     type: 'founder' | 'chairman' | 'logo',
     url: string
-  ) => void;
+  ) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(
@@ -62,7 +66,7 @@ const AppContext = createContext<AppContextType | undefined>(
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [isSyncing, setIsSyncing] = useState(false);
+  const [isSyncing] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
 
   const [bbsData, setBbsData] =
@@ -80,11 +84,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     adminPassword: 'password',
   });
   const [isAdmin, setIsAdminState] = useState(false);
-  const [settingsRowId, setSettingsRowId] = useState<string | null>(
-    null
-  );
+  const [settingsRowId, setSettingsRowId] = useState<
+    string | null
+  >(null);
 
-  // Load from localStorage on mount + override with Supabase settings
+  // localStorage + Supabase settings 로드
   useEffect(() => {
     const loadFromStorageAndSupabase = async () => {
       try {
@@ -104,11 +108,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           const parsed = JSON.parse(savedSettings);
           setSettings(prev => ({ ...prev, ...parsed }));
         }
-
         if (savedAdmin)
           setIsAdminState(savedAdmin === 'true');
 
-        // load settings row from Supabase
         const { data, error } = await supabase
           .from('settings')
           .select('*')
@@ -139,9 +141,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     loadFromStorageAndSupabase();
   }, []);
 
-  // persist to localStorage when state changes
+  // localStorage 저장
   useEffect(() => {
     if (!isInitialized) return;
+
     try {
       localStorage.setItem(
         STORAGE_KEYS.BBS,
@@ -168,24 +171,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     localStorage.setItem('kpii_is_admin', String(val));
   }, []);
 
-  const addBBSEntry = useCallback(
-    (entry: Omit<BBSEntry, 'id' | 'createdAt'>) => {
-      const newEntry: BBSEntry = {
-        ...entry,
-        id: crypto.randomUUID(),
-        createdAt: new Date().toISOString(),
-      };
-      setBbsData(prev => [newEntry, ...prev]);
-    },
-    []
-  );
+  // BBS
+  const addBBSEntry = useCallback((entry: BBSEntry) => {
+    setBbsData(prev => [entry, ...prev]);
+  }, []);
 
   const updateBBSEntry = useCallback(
-    (id: string, updates: Partial<BBSEntry>) => {
+    (entry: BBSEntry) => {
       setBbsData(prev =>
-        prev.map(entry =>
-          entry.id === id ? { ...entry, ...updates } : entry
-        )
+        prev.map(b => (b.id === entry.id ? entry : b))
       );
     },
     []
@@ -197,17 +191,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     );
   }, []);
 
-  const addInquiry = useCallback(
-    (inquiry: Omit<Inquiry, 'id' | 'createdAt'>) => {
-      const newInquiry: Inquiry = {
-        ...inquiry,
-        id: crypto.randomUUID(),
-        createdAt: new Date().toISOString(),
-      };
-      setInquiries(prev => [newInquiry, ...prev]);
-    },
-    []
-  );
+  // Inquiry
+  const addInquiry = useCallback((inq: Inquiry) => {
+    setInquiries(prev => [inq, ...prev]);
+  }, []);
 
   const deleteInquiry = useCallback((id: string) => {
     setInquiries(prev =>
@@ -215,6 +202,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     );
   }, []);
 
+  // Settings
   const updateSettings = useCallback(
     (updates: Partial<AppSettings>) => {
       setSettings(prev => ({ ...prev, ...updates }));
@@ -222,33 +210,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     []
   );
 
-  const addRollingImage = useCallback(
-    (image: Omit<RollingImage, 'id'>) => {
-      const newImage: RollingImage = {
-        ...image,
-        id: crypto.randomUUID(),
-      };
+  const updateAdminPassword = useCallback(
+    (password: string) => {
       setSettings(prev => ({
         ...prev,
-        rollingImages: [...prev.rollingImages, newImage],
+        adminPassword: password,
+      }));
+    },
+    []
+  );
+
+  // Rolling images
+  const addRollingImage = useCallback(
+    (image: RollingImage) => {
+      setSettings(prev => ({
+        ...prev,
+        rollingImages: [
+          ...prev.rollingImages,
+          image,
+        ],
       }));
     },
     []
   );
 
   const updateRollingImage = useCallback(
-    (id: string, updates: Partial<RollingImage>) => {
+    (id: number, imageUrl: string, link: string) => {
       setSettings(prev => ({
         ...prev,
         rollingImages: prev.rollingImages.map(img =>
-          img.id === id ? { ...img, ...updates } : img
+          img.id === id
+            ? { ...img, url: imageUrl, link }
+            : img
         ),
       }));
     },
     []
   );
 
-  const deleteRollingImage = useCallback((id: string) => {
+  const deleteRollingImage = useCallback((id: number) => {
     setSettings(prev => ({
       ...prev,
       rollingImages: prev.rollingImages.filter(
@@ -257,18 +257,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     }));
   }, []);
 
+  // Profile image URLs (Supabase settings table)
   const updateProfileImage = useCallback(
     async (
       type: 'founder' | 'chairman' | 'logo',
       url: string
     ) => {
-      // local state update
       setSettings(prev => ({
         ...prev,
         [`${type}ImageUrl`]: url,
-      }));
+      }) as AppSettings);
 
-      // persist to Supabase
       try {
         if (!settingsRowId) return;
 
@@ -286,7 +285,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           .eq('id', settingsRowId);
 
         if (error) {
-          console.error('Supabase update error:', error);
+          console.error(
+            'Supabase update error:',
+            error
+          );
           alert(
             'Failed to save image settings.'
           );
@@ -314,6 +316,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     addInquiry,
     deleteInquiry,
     updateSettings,
+    updateAdminPassword,
     addRollingImage,
     updateRollingImage,
     deleteRollingImage,
