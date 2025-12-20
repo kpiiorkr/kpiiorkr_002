@@ -48,9 +48,36 @@ export const INITIAL_BBS_DATA: BBSEntry[] = [
 ];
 
 export const INITIAL_ROLLING_IMAGES: RollingImage[] = [
-  { id: 1, url: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=1600', link: '#' },
-  { id: 2, url: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&q=80&w=1600', link: '#' },
-  { id: 3, url: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=1600', link: '#' },
+  { 
+    id: 1, 
+    image_url: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=1600', 
+    subtitle: 'Better Process, Better Innovation',
+    title: 'Revolutionize Your\nBusiness Future',
+    button_text: 'Learn More',
+    button_link: '협회소개',
+    link_type: 'internal',
+    display_order: 1
+  },
+  { 
+    id: 2, 
+    image_url: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&q=80&w=1600', 
+    subtitle: 'Innovation Starts Here',
+    title: 'Transform Your\nOrganization',
+    button_text: 'Discover More',
+    button_link: '공지사항',
+    link_type: 'internal',
+    display_order: 2
+  },
+  { 
+    id: 3, 
+    image_url: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=1600', 
+    subtitle: 'Leading Digital Transformation',
+    title: 'Build The Future\nTogether',
+    button_text: 'Join Us',
+    button_link: 'Contact us',
+    link_type: 'internal',
+    display_order: 3
+  },
 ];
 
 export const MENUS: MenuType[] = [

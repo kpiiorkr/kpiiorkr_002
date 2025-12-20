@@ -59,6 +59,21 @@ export interface Database {
         Insert: Omit<Database['public']['Tables']['member_companies']['Row'], 'created_at'>;
         Update: Partial<Database['public']['Tables']['member_companies']['Insert']>;
       };
+      rolling_images: {
+        Row: {
+          id: number;
+          image_url: string;
+          subtitle: string;
+          title: string;
+          button_text: string;
+          button_link: string;
+          link_type: 'external' | 'internal';
+          display_order: number;
+          created_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['rolling_images']['Row'], 'id' | 'created_at'>;
+        Update: Partial<Database['public']['Tables']['rolling_images']['Insert']>;
+      };
     };
   };
 }

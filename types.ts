@@ -30,8 +30,13 @@ export interface Inquiry {
 
 export interface RollingImage {
   id: number;
-  url: string;
-  link: string;
+  image_url: string;
+  subtitle: string;
+  title: string;
+  button_text: string;
+  button_link: string;
+  link_type: 'external' | 'internal';
+  display_order: number;
 }
 
 export interface AppSettings {

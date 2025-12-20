@@ -45,13 +45,10 @@ interface AppContextType {
   updateSettings: (updates: Partial<AppSettings>) => void;
   updateAdminPassword: (password: string) => void;
 
-  addRollingImage: (image: RollingImage) => void;
-  updateRollingImage: (
-    id: number,
-    imageUrl: string,
-    link: string
-  ) => void;
-  deleteRollingImage: (id: number) => void;
+  addRollingImage: (image: Omit<RollingImage, 'id'>) => Promise<void>;
+  updateRollingImage: (image: RollingImage) => Promise<void>;
+  deleteRollingImage: (id: number) => Promise<void>;
+  loadRollingImages: () => Promise<void>;
 
   updateProfileImage: (
     type: 'founder' | 'chairman' | 'logo',
@@ -87,6 +84,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   const [settingsRowId, setSettingsRowId] = useState<
     string | null
   >(null);
+
+  // Supabase에서 rolling images 로드
+  const loadRollingImages = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('rolling_images')
+        .select('*')
+        .order('display_order', { ascending: true });
+
+      if (error) {
+        console.error('Failed to load rolling images:', error);
+        return;
+      }
+
+      if (data && data.length > 0) {
+        setSettings(prev => ({
+          ...prev,
+          rollingImages: data,
+        }));
+      }
+    } catch (e) {
+      console.error('Error loading rolling images:', e);
+    }
+  }, []);
 
   // localStorage + Supabase settings 로드
   useEffect(() => {
@@ -131,6 +152,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           }));
           setSettingsRowId(data.id);
         }
+
+        // Rolling images 로드
+        await loadRollingImages();
       } catch (e) {
         console.error('Data recovery failed', e);
       } finally {
@@ -139,7 +163,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     };
 
     loadFromStorageAndSupabase();
-  }, []);
+  }, [loadRollingImages]);
 
   // localStorage 저장
   useEffect(() => {
@@ -220,41 +244,92 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     []
   );
 
-  // Rolling images
+  // Rolling images with Supabase
   const addRollingImage = useCallback(
-    (image: RollingImage) => {
-      setSettings(prev => ({
-        ...prev,
-        rollingImages: [
-          ...prev.rollingImages,
-          image,
-        ],
-      }));
+    async (image: Omit<RollingImage, 'id'>) => {
+      try {
+        const { data, error } = await supabase
+          .from('rolling_images')
+          .insert([image])
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Failed to add rolling image:', error);
+          throw error;
+        }
+
+        if (data) {
+          setSettings(prev => ({
+            ...prev,
+            rollingImages: [...prev.rollingImages, data],
+          }));
+        }
+      } catch (e) {
+        console.error('Error adding rolling image:', e);
+        throw e;
+      }
     },
     []
   );
 
   const updateRollingImage = useCallback(
-    (id: number, imageUrl: string, link: string) => {
-      setSettings(prev => ({
-        ...prev,
-        rollingImages: prev.rollingImages.map(img =>
-          img.id === id
-            ? { ...img, url: imageUrl, link }
-            : img
-        ),
-      }));
+    async (image: RollingImage) => {
+      try {
+        const { error } = await supabase
+          .from('rolling_images')
+          .update({
+            image_url: image.image_url,
+            subtitle: image.subtitle,
+            title: image.title,
+            button_text: image.button_text,
+            button_link: image.button_link,
+            link_type: image.link_type,
+            display_order: image.display_order,
+          })
+          .eq('id', image.id);
+
+        if (error) {
+          console.error('Failed to update rolling image:', error);
+          throw error;
+        }
+
+        setSettings(prev => ({
+          ...prev,
+          rollingImages: prev.rollingImages.map(img =>
+            img.id === image.id ? image : img
+          ),
+        }));
+      } catch (e) {
+        console.error('Error updating rolling image:', e);
+        throw e;
+      }
     },
     []
   );
 
-  const deleteRollingImage = useCallback((id: number) => {
-    setSettings(prev => ({
-      ...prev,
-      rollingImages: prev.rollingImages.filter(
-        img => img.id !== id
-      ),
-    }));
+  const deleteRollingImage = useCallback(async (id: number) => {
+    try {
+      const { error } = await supabase
+        .from('rolling_images')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.error('Failed to delete rolling image:', error);
+        throw error;
+      }
+
+      setSettings(prev => ({
+        ...prev,
+        rollingImages: prev.rollingImages.filter(
+          img => img.id !== id
+        ),
+      }));
+    } catch (e) {
+      console.error('Error deleting rolling image:', e);
+      throw e;
+    }
   }, []);
 
   // Profile image URLs (Supabase settings table)
@@ -320,6 +395,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     addRollingImage,
     updateRollingImage,
     deleteRollingImage,
+    loadRollingImages,
     updateProfileImage,
   };
 
