@@ -23,7 +23,7 @@ interface AppContextType {
   updateProfileImage: (type: 'founder' | 'chairman' | 'logo', file: File | null, url?: string) => Promise<void>;
   updateAdminPassword: (newPass: string) => Promise<void>;
   toggleSidebar: () => Promise<void>;
-  syncExternalData: (category: 'ê³µì§€ì‚¬í•­' | 'ì‚¬íšŒê³µí—Œí™œë™' | 'ìžë£Œì‹¤') => Promise<void>;
+  syncExternalData: (category: MenuType) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -44,7 +44,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
   const [isAdmin, setIsAdminState] = useState(false);
 
-  // Supabase에서 데이터 로드
   useEffect(() => {
     loadAllData();
   }, []);
@@ -52,14 +51,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const loadAllData = async () => {
     setIsLoading(true);
     try {
-      // BBS 데이터 로드
       const { data: bbsEntries, error: bbsError } = await supabase
         .from('bbs_entries')
         .select('*')
         .order('created_at', { ascending: false });
       
       if (bbsError) {
-        console.error('BBS 로드 실패:', bbsError);
+        console.error('BBS load failed:', bbsError);
         setBbsData(INITIAL_BBS_DATA);
       } else if (bbsEntries && bbsEntries.length > 0) {
         setBbsData(bbsEntries.map(entry => ({
@@ -74,11 +72,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           fileSize: entry.file_size || undefined
         })));
       } else {
-        // 초기 데이터 삽입
         await initializeData();
       }
 
-      // 문의사항 로드
       const { data: inquiryData, error: inquiryError } = await supabase
         .from('inquiries')
         .select('*')
@@ -88,7 +84,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setInquiries(inquiryData);
       }
 
-      // 설정 로드
       const { data: settingsData, error: settingsError } = await supabase
         .from('settings')
         .select('*');
@@ -113,12 +108,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSettings(prev => ({ ...prev, ...settingsObj }));
       }
 
-      // 관리자 상태는 sessionStorage에서 로드
       const savedAdmin = sessionStorage.getItem('kpii_is_admin');
       if (savedAdmin) setIsAdminState(savedAdmin === 'true');
 
     } catch (e) {
-      console.error("데이터 로드 실패:", e);
+      console.error("Data load failed:", e);
     } finally {
       setIsLoading(false);
     }
@@ -126,7 +120,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const initializeData = async () => {
     try {
-      // 초기 BBS 데이터 삽입
       const { error } = await supabase
         .from('bbs_entries')
         .insert(INITIAL_BBS_DATA.map(entry => ({
@@ -145,7 +138,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setBbsData(INITIAL_BBS_DATA);
       }
     } catch (e) {
-      console.error("초기 데이터 삽입 실패:", e);
+      console.error("Initial data insert failed:", e);
     }
   };
 
@@ -172,8 +165,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!error) {
       setBbsData(prev => [entry, ...prev]);
     } else {
-      console.error('게시물 추가 실패:', error);
-      alert('게시물 추가에 실패했습니다.');
+      console.error('Failed to add post:', error);
+      alert('Failed to add post.');
     }
   }, []);
 
@@ -195,8 +188,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!error) {
       setBbsData(prev => prev.map(e => e.id === updated.id ? updated : e));
     } else {
-      console.error('게시물 수정 실패:', error);
-      alert('게시물 수정에 실패했습니다.');
+      console.error('Failed to update post:', error);
+      alert('Failed to update post.');
     }
   }, []);
 
@@ -209,8 +202,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!error) {
       setBbsData(prev => prev.filter(e => e.id !== id));
     } else {
-      console.error('게시물 삭제 실패:', error);
-      alert('게시물 삭제에 실패했습니다.');
+      console.error('Failed to delete post:', error);
+      alert('Failed to delete post.');
     }
   }, []);
 
@@ -222,7 +215,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!error) {
       setInquiries(prev => [inquiry, ...prev]);
     } else {
-      console.error('문의 추가 실패:', error);
+      console.error('Failed to add inquiry:', error);
     }
   }, []);
 
@@ -263,7 +256,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
       
       if (error) {
-        console.error('이미지 업로드 실패:', error);
+        console.error('Image upload failed:', error);
         return null;
       }
       
@@ -273,7 +266,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       
       return publicUrl;
     } catch (e) {
-      console.error('이미지 업로드 예외:', e);
+      console.error('Image upload exception:', e);
       return null;
     }
   };
@@ -284,7 +277,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (file) {
       imageUrl = await uploadImage(file, type);
       if (!imageUrl) {
-        alert('이미지 업로드에 실패했습니다.');
+        alert('Image upload failed.');
         return;
       }
     }
@@ -310,9 +303,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     
     if (!error) {
       setSettings(prev => ({ ...prev, adminPassword: newPass }));
-      alert('비밀번호가 변경되었습니다.');
+      alert('Password changed successfully.');
     } else {
-      alert('비밀번호 변경에 실패했습니다.');
+      alert('Failed to change password.');
     }
   }, []);
 
@@ -328,26 +321,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [settings.showSidebar]);
 
-  const syncExternalData = async (category: 'ê³µì§€ì‚¬í•­' | 'ì‚¬íšŒê³µí—Œí™œë™' | 'ìžë£Œì‹¤') => {
+  const syncExternalData = async (category: MenuType) => {
+    const CATEGORY_MAP: Record<string, string> = {
+      '공지사항': 'notice',
+      '사회공헌활동': 'activity',
+      '자료실': 'resources'
+    };
+
+    const categoryKey = CATEGORY_MAP[category];
+    if (!categoryKey) {
+      alert('Invalid category');
+      return;
+    }
+
     let apiKey = '';
     try { apiKey = (process.env as any).API_KEY; } catch (e) {}
-    if (!apiKey) return alert("API_KEYê°€ ì„¤ì •ë˜ì§€ ì•Šì•˜ìŠµë‹ˆë‹¤.");
+    if (!apiKey) {
+      alert("API_KEY is not configured.");
+      return;
+    }
     
-    const urlMap = {
-      'ê³µì§€ì‚¬í•­': 'https://kpii.cafe24.com/board/%EA%B3%B5%EC%A7%80%EC%82%AC%ED%95%AD/1/',
-      'ì‚¬íšŒê³µí—Œí™œë™': 'https://kpii.cafe24.com/board/%EC%82%AC%ED%9A%8C%EA%B3%B5%ED%97%8C%ED%99%9C%EB%8F%99/4/',
-      'ìžë£Œì‹¤': 'https://kpii.cafe24.com/board/%EC%9E%90%EB%A3%8C%EC%8B%A4/7/'
+    const urlMap: Record<string, string> = {
+      'notice': 'https://kpii.cafe24.com/board/%EA%B3%B5%EC%A7%80%EC%82%AC%ED%95%AD/1/',
+      'activity': 'https://kpii.cafe24.com/board/%EC%82%AC%ED%9A%8C%EA%B3%B5%ED%97%8C%ED%99%9C%EB%8F%99/4/',
+      'resources': 'https://kpii.cafe24.com/board/%EC%9E%90%EB%A3%8C%EC%8B%A4/7/'
     };
 
     setIsSyncing(true);
     try {
-      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(urlMap[category])}`;
+      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(urlMap[categoryKey])}`;
       const fetchRes = await fetch(proxyUrl);
       const jsonRes = await fetchRes.json();
       const htmlContent = jsonRes.contents;
 
       const ai = new GoogleGenAI({ apiKey: apiKey });
-      const prompt = `HTML ì†ŒìŠ¤ì—ì„œ ìµœì‹  ê²Œì‹œë¬¼ 5ê°œì˜ ì œëª©ê³¼ ìž'ì„± ë‚ ì§œë¥¼ JSON ë°°ì—´ë¡œ ì¶"ì¶œí•˜ì„¸ìš". ì¹´í…Œê³ ë¦¬ëŠ" ${category}ìž…ë‹ˆë‹¤. ë§ˆí¬ë‹¤ìš´ ì—†ì´ ìˆœìˆ˜ JSONë§Œ ë°˜í™˜í•˜ì„¸ìš".`;
+      const prompt = `Extract latest 5 posts (title and date) from HTML source as JSON array. Category: ${category}. Return pure JSON only without markdown.`;
 
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
@@ -356,23 +364,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
 
       const text = response.text;
-      if (!text) throw new Error("AI ì'ë‹µì´ ë¹„ì–´ìžˆìŠµë‹ˆë‹¤.");
+      if (!text) throw new Error("AI response is empty.");
       
       const parsedData = JSON.parse(text.replace(/```json|```/g, "").trim());
       
-      // 기존 카테고리 데이터 삭제
       await supabase
         .from('bbs_entries')
         .delete()
         .eq('category', category);
       
-      // 새 데이터 삽입
       const newEntries = parsedData.map((item: any, idx: number) => ({
         id: `ext-${category}-${idx}-${Date.now()}`,
         category: category,
         title: item.title,
         content: item.content || item.title,
-        author: 'ê´€ë¦¬ìž',
+        author: 'Admin',
         date: item.date || new Date().toISOString().split('T')[0],
         image_url: null,
         file_name: null,
@@ -385,11 +391,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       
       if (!error) {
         await loadAllData();
-        alert(`${category} ë°ì´í„°ê°€ ì„±ê³µì ìœ¼ë¡œ ë™ê¸°í™"ë˜ì—ˆìŠµë‹ˆë‹¤.`);
+        alert(`${category} data synchronized successfully.`);
       }
     } catch (err) {
       console.error(err);
-      alert("ë™ê¸°í™" ì¤' ì˜¤ë¥˜ê°€ ë°œìƒí–ˆìŠµë‹ˆë‹¤.");
+      alert("Synchronization failed.");
     } finally {
       setIsSyncing(false);
     }
