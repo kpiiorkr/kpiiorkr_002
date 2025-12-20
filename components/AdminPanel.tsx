@@ -160,15 +160,18 @@ export const AdminPanel: React.FC = () => {
     }
 
     try {
+      // 빈 문자열을 undefined로 변환하는 헬퍼
+      const cleanText = (text?: string) => text && text.trim() ? text.trim() : undefined;
+
       if (editingRollingId !== null) {
         // Update existing
         await updateRollingImage({
           id: editingRollingId,
           image_url: rollingFormData.image_url!,
-          subtitle: rollingFormData.subtitle || undefined,
-          title: rollingFormData.title || undefined,
-          button_text: rollingFormData.button_text || undefined,
-          button_link: rollingFormData.button_link || undefined,
+          subtitle: cleanText(rollingFormData.subtitle),
+          title: cleanText(rollingFormData.title),
+          button_text: cleanText(rollingFormData.button_text),
+          button_link: cleanText(rollingFormData.button_link),
           link_type: rollingFormData.link_type!,
           display_order: rollingFormData.display_order!,
         });
@@ -177,10 +180,10 @@ export const AdminPanel: React.FC = () => {
         // Add new
         await addRollingImage({
           image_url: rollingFormData.image_url!,
-          subtitle: rollingFormData.subtitle || undefined,
-          title: rollingFormData.title || undefined,
-          button_text: rollingFormData.button_text || undefined,
-          button_link: rollingFormData.button_link || undefined,
+          subtitle: cleanText(rollingFormData.subtitle),
+          title: cleanText(rollingFormData.title),
+          button_text: cleanText(rollingFormData.button_text),
+          button_link: cleanText(rollingFormData.button_link),
           link_type: rollingFormData.link_type!,
           display_order: rollingFormData.display_order!,
         });

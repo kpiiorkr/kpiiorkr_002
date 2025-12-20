@@ -100,9 +100,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       }
 
       if (data && data.length > 0) {
+        // Supabase의 snake_case를 camelCase로 변환
+        const transformedData = data.map((item: any) => ({
+          id: item.id,
+          image_url: item.image_url,
+          subtitle: item.subtitle || undefined,
+          title: item.title || undefined,
+          button_text: item.button_text || undefined,
+          button_link: item.button_link || undefined,
+          link_type: item.link_type,
+          display_order: item.display_order,
+        }));
+
         setSettings(prev => ({
           ...prev,
-          rollingImages: data,
+          rollingImages: transformedData,
         }));
       }
     } catch (e) {
@@ -261,9 +273,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         }
 
         if (data) {
+          // Supabase의 snake_case를 camelCase로 변환
+          const transformedData: RollingImage = {
+            id: data.id,
+            image_url: data.image_url,
+            subtitle: data.subtitle || undefined,
+            title: data.title || undefined,
+            button_text: data.button_text || undefined,
+            button_link: data.button_link || undefined,
+            link_type: data.link_type,
+            display_order: data.display_order,
+          };
+
           setSettings(prev => ({
             ...prev,
-            rollingImages: [...prev.rollingImages, data],
+            rollingImages: [...prev.rollingImages, transformedData],
           }));
         }
       } catch (e) {
