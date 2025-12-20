@@ -19,7 +19,7 @@ import {
   INITIAL_ROLLING_IMAGES,
 } from './constants.tsx';
 
-import { supabase } from './lib/supabase';
+import { supabase } from './supabaseClient';
 
 const STORAGE_KEYS = {
   BBS: 'kpii_bbs_data',

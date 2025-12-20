@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../store.ts';
 import { MenuType, BBSEntry, Inquiry } from '../types.ts';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../supabaseClient';
 
 function buildUploadPath(folder: string, file: File) {
   const original = file.name || 'image';
