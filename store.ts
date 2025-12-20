@@ -34,6 +34,7 @@ interface AppContextType {
   isSyncing: boolean;
 
   setIsAdmin: (val: boolean) => void;
+  toggleSidebar: () => void;
 
   addBBSEntry: (entry: BBSEntry) => void;
   updateBBSEntry: (entry: BBSEntry) => void;
@@ -100,7 +101,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       }
 
       if (data && data.length > 0) {
-        // Supabase의 snake_case를 camelCase로 변환
+        // Supabase의 snake_case를 camelCase로 변환, null을 undefined로 처리
         const transformedData = data.map((item: any) => ({
           id: item.id,
           image_url: item.image_url,
@@ -108,9 +109,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           title: item.title || undefined,
           button_text: item.button_text || undefined,
           button_link: item.button_link || undefined,
-          link_type: item.link_type,
-          display_order: item.display_order,
+          link_type: item.link_type || 'internal',
+          display_order: item.display_order || 1,
         }));
+
+        console.log('Loaded rolling images:', transformedData); // 디버깅용
 
         setSettings(prev => ({
           ...prev,
@@ -127,9 +130,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     const loadFromStorageAndSupabase = async () => {
       try {
         const savedBbs = localStorage.getItem(STORAGE_KEYS.BBS);
-        const savedSettings = localStorage.getItem(
-          STORAGE_KEYS.SETTINGS
-        );
         const savedInquiries = localStorage.getItem(
           STORAGE_KEYS.INQUIRIES
         );
@@ -138,13 +138,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         if (savedBbs) setBbsData(JSON.parse(savedBbs));
         if (savedInquiries)
           setInquiries(JSON.parse(savedInquiries));
-        if (savedSettings) {
-          const parsed = JSON.parse(savedSettings);
-          setSettings(prev => ({ ...prev, ...parsed }));
-        }
         if (savedAdmin)
           setIsAdminState(savedAdmin === 'true');
 
+        // Supabase settings를 먼저 로드 (우선순위)
         const { data, error } = await supabase
           .from('settings')
           .select('*')
@@ -164,6 +161,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
               prev.chairmanImageUrl,
           }));
           setSettingsRowId(data.id);
+        }
+
+        // localStorage settings는 Supabase 이미지를 덮어쓰지 않도록 주의
+        const savedSettings = localStorage.getItem(
+          STORAGE_KEYS.SETTINGS
+        );
+        if (savedSettings) {
+          const parsed = JSON.parse(savedSettings);
+          // 이미지 URL은 Supabase 값 유지, 나머지만 병합
+          const { logoImageUrl, founderImageUrl, chairmanImageUrl, ...otherSettings } = parsed;
+          setSettings(prev => ({ ...prev, ...otherSettings }));
         }
 
         // Rolling images 로드
@@ -246,6 +254,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     },
     []
   );
+
+  const toggleSidebar = useCallback(() => {
+    setSettings(prev => ({ ...prev, showSidebar: !prev.showSidebar }));
+  }, []);
 
   const updateAdminPassword = useCallback(
     (password: string) => {
@@ -410,6 +422,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     isAdmin,
     isSyncing,
     setIsAdmin,
+    toggleSidebar,
     addBBSEntry,
     updateBBSEntry,
     deleteBBSEntry,
