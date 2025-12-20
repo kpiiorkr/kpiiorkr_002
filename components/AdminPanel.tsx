@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { useApp } from '../store.ts';
-import { MenuType, BBSEntry, Inquiry, RollingImage } from '../types.ts';
+import { useApp } from '../store';
+import { MenuType, BBSEntry, Inquiry, RollingImage } from '../types';
 import { supabase } from '../supabaseClient';
-import { MENUS } from '../constants.tsx';
+import { MENUS } from '../constants';
 
 function buildUploadPath(folder: string, file: File) {
   const original = file.name || 'image';

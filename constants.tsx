@@ -1,4 +1,4 @@
-import { BBSEntry, RollingImage, MenuType } from './types.ts';
+import { BBSEntry, RollingImage, MenuType } from './types';
 
 export const INITIAL_BBS_DATA: BBSEntry[] = [
   // 공지사항 Migration

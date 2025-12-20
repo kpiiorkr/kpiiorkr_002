@@ -11,12 +11,12 @@ import {
   RollingImage,
   AppSettings,
   Inquiry,
-} from './types.ts';
+} from './types';
 
 import {
   INITIAL_BBS_DATA,
   INITIAL_ROLLING_IMAGES,
-} from './constants.tsx';
+} from './constants';
 
 import { supabase } from './supabaseClient';
 
