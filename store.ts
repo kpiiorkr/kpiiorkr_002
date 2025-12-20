@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { BBSEntry, RollingImage, AppSettings, MenuType, Inquiry } from './types.ts';
 import { INITIAL_BBS_DATA, INITIAL_ROLLING_IMAGES } from './constants.tsx';
-import { GoogleGenAI } from "@google/genai";
 import { supabase } from './supabaseClient.ts';
 
 interface AppContextType {
@@ -9,7 +8,6 @@ interface AppContextType {
   inquiries: Inquiry[];
   settings: AppSettings;
   isAdmin: boolean;
-  isSyncing: boolean;
   isLoading: boolean;
   setBbsData: React.Dispatch<React.SetStateAction<BBSEntry[]>>;
   setSettings: React.Dispatch<React.SetStateAction<AppSettings>>;
@@ -23,13 +21,11 @@ interface AppContextType {
   updateProfileImage: (type: 'founder' | 'chairman' | 'logo', file: File | null, url?: string) => Promise<void>;
   updateAdminPassword: (newPass: string) => Promise<void>;
   toggleSidebar: () => Promise<void>;
-  syncExternalData: (category: MenuType) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isSyncing, setIsSyncing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   
   const [bbsData, setBbsData] = useState<BBSEntry[]>([]);
@@ -247,16 +243,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const uploadImage = async (file: File, folder: string): Promise<string | null> => {
     try {
-      const fileName = `${folder}/${Date.now()}_${file.name}`;
+      const fileExt = file.name.split('.').pop()?.toLowerCase();
+      const fileName = `${folder}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+      
+      const contentTypeMap: Record<string, string> = {
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'png': 'image/png',
+        'gif': 'image/gif',
+        'webp': 'image/webp',
+        'svg': 'image/svg+xml'
+      };
+      
+      const contentType = contentTypeMap[fileExt || ''] || 'image/jpeg';
+      
       const { data, error } = await supabase.storage
         .from('images')
         .upload(fileName, file, {
           cacheControl: '3600',
-          upsert: false
+          upsert: false,
+          contentType: contentType
         });
       
       if (error) {
         console.error('Image upload failed:', error);
+        alert(`Image upload failed: ${error.message}`);
         return null;
       }
       
@@ -267,6 +278,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return publicUrl;
     } catch (e) {
       console.error('Image upload exception:', e);
+      alert('Image upload exception occurred.');
       return null;
     }
   };
@@ -277,7 +289,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (file) {
       imageUrl = await uploadImage(file, type);
       if (!imageUrl) {
-        alert('Image upload failed.');
         return;
       }
     }
@@ -292,6 +303,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     
     if (!error) {
       setSettings(prev => ({ ...prev, [`${type}ImageUrl`]: imageUrl }));
+      alert('Image updated successfully.');
+    } else {
+      alert('Failed to update image setting.');
     }
   }, []);
 
@@ -321,94 +335,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [settings.showSidebar]);
 
-  const syncExternalData = async (category: MenuType) => {
-    const CATEGORY_MAP: Record<string, string> = {
-      '공지사항': 'notice',
-      '사회공헌활동': 'activity',
-      '자료실': 'resources'
-    };
-
-    const categoryKey = CATEGORY_MAP[category];
-    if (!categoryKey) {
-      alert('Invalid category');
-      return;
-    }
-
-    let apiKey = '';
-    try { apiKey = (process.env as any).API_KEY; } catch (e) {}
-    if (!apiKey) {
-      alert("API_KEY is not configured.");
-      return;
-    }
-    
-    const urlMap: Record<string, string> = {
-      'notice': 'https://kpii.cafe24.com/board/%EA%B3%B5%EC%A7%80%EC%82%AC%ED%95%AD/1/',
-      'activity': 'https://kpii.cafe24.com/board/%EC%82%AC%ED%9A%8C%EA%B3%B5%ED%97%8C%ED%99%9C%EB%8F%99/4/',
-      'resources': 'https://kpii.cafe24.com/board/%EC%9E%90%EB%A3%8C%EC%8B%A4/7/'
-    };
-
-    setIsSyncing(true);
-    try {
-      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(urlMap[categoryKey])}`;
-      const fetchRes = await fetch(proxyUrl);
-      const jsonRes = await fetchRes.json();
-      const htmlContent = jsonRes.contents;
-
-      const ai = new GoogleGenAI({ apiKey: apiKey });
-      const prompt = `Extract latest 5 posts (title and date) from HTML source as JSON array. Category: ${category}. Return pure JSON only without markdown.`;
-
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: [{ parts: [{ text: prompt + "\n\n" + htmlContent.substring(0, 10000) }] }],
-        config: { responseMimeType: "application/json" }
-      });
-
-      const text = response.text;
-      if (!text) throw new Error("AI response is empty.");
-      
-      const parsedData = JSON.parse(text.replace(/```json|```/g, "").trim());
-      
-      await supabase
-        .from('bbs_entries')
-        .delete()
-        .eq('category', category);
-      
-      const newEntries = parsedData.map((item: any, idx: number) => ({
-        id: `ext-${category}-${idx}-${Date.now()}`,
-        category: category,
-        title: item.title,
-        content: item.content || item.title,
-        author: 'Admin',
-        date: item.date || new Date().toISOString().split('T')[0],
-        image_url: null,
-        file_name: null,
-        file_size: null
-      }));
-      
-      const { error } = await supabase
-        .from('bbs_entries')
-        .insert(newEntries);
-      
-      if (!error) {
-        await loadAllData();
-        alert(`${category} data synchronized successfully.`);
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Synchronization failed.");
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
   return React.createElement(AppContext.Provider, {
     value: { 
-      bbsData, inquiries, settings, isAdmin, isSyncing, isLoading,
+      bbsData, inquiries, settings, isAdmin, isLoading,
       setBbsData, setSettings, setIsAdmin, 
       addBBSEntry, updateBBSEntry, deleteBBSEntry, 
       addInquiry, deleteInquiry,
-      updateRollingImage, updateProfileImage, updateAdminPassword, toggleSidebar,
-      syncExternalData
+      updateRollingImage, updateProfileImage, updateAdminPassword, toggleSidebar
     }
   }, children);
 };

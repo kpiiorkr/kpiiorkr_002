@@ -27,11 +27,12 @@ const App: React.FC = () => {
     if (currentMenu === '회장사소개') return <Chairman />;
     if (currentMenu === 'Contact us') return <Contact />;
     
-    // 외부 연동 게시판 처리 (iframe 방식)
+    // 외부 연동 게시판 처리 (iframe 방식) - 유지
     if (currentMenu === '공지사항') return <ExternalNoticePage />;
     if (currentMenu === '사회공헌활동') return <ExternalActivityPage />;
     if (currentMenu === '자료실') return <ExternalResourcePage />;
     
+    // 회원사소개는 일반 BBS 페이지 사용
     return <BBSPage category={currentMenu} />;
   };
 
