@@ -78,7 +78,6 @@ export const Founder: React.FC = () => {
                  <li className="flex gap-3"><i className="fas fa-caret-right text-kpia-orange mt-1"></i> LG전자 NERP PI 프로세스 혁신 사업 참여(프로세스 마이닝)</li>
                  <li className="flex gap-3"><i className="fas fa-caret-right text-kpia-orange mt-1"></i> LG CNS 모바일 자동화 개발</li>
                  <li className="flex gap-3"><i className="fas fa-caret-right text-kpia-orange mt-1"></i> LG CNS RPA Open시장 컨설팅 및 사내 사업지원</li>
-                 <li className="fas fa-caret-right text-kpia-orange mt-1"></li>
                  <li className="flex gap-3"><i className="fas fa-caret-right text-kpia-orange mt-1"></i> 건강보험 심사평가원 대내외 서비스 개선사업 RPA부문 PM</li>
                  <li className="flex gap-3"><i className="fas fa-caret-right text-kpia-orange mt-1"></i> 현대백화점그룹, 동양생명, 광동제약, 티머니 참여</li>
                  <li className="flex gap-3"><i className="fas fa-caret-right text-kpia-orange mt-1"></i> 롯데백화점 PM 및 롯데멤버스, 에쓰오일, 삼성전자 프로세스 사업 개발참여</li>
