@@ -72,6 +72,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   const [settings, setSettings] = useState<AppSettings>({
     showSidebar: true,
     rollingImages: INITIAL_ROLLING_IMAGES,
+    rollingImageInterval: 5000,
     founderImageUrl:
       'https://raw.githubusercontent.com/kpiiorkr/img/main/founder.png',
     chairmanImageUrl:

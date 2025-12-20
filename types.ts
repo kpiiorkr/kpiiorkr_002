@@ -31,10 +31,10 @@ export interface Inquiry {
 export interface RollingImage {
   id: number;
   image_url: string;
-  subtitle: string;
-  title: string;
-  button_text: string;
-  button_link: string;
+  subtitle?: string;
+  title?: string;
+  button_text?: string;
+  button_link?: string;
   link_type: 'external' | 'internal';
   display_order: number;
 }
@@ -42,6 +42,7 @@ export interface RollingImage {
 export interface AppSettings {
   showSidebar: boolean;
   rollingImages: RollingImage[];
+  rollingImageInterval: number; // milliseconds
   founderImageUrl: string;
   chairmanImageUrl: string;
   logoImageUrl: string;

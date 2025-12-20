@@ -10,22 +10,32 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
   const { settings } = useApp();
   const [activeIndex, setActiveIndex] = useState(0);
   const rollingImages = settings.rollingImages || [];
+  const interval = settings.rollingImageInterval || 5000;
 
   useEffect(() => {
     if (rollingImages.length <= 1) return;
     const timer = setInterval(() => {
       setActiveIndex((prev) => (prev + 1) % rollingImages.length);
-    }, 5000);
+    }, interval);
     return () => clearInterval(timer);
-  }, [rollingImages.length]);
+  }, [rollingImages.length, interval]);
 
   const handleButtonClick = (image: typeof rollingImages[0]) => {
+    if (!image.button_link) return;
+    
     if (image.link_type === 'external') {
       window.open(image.button_link, '_blank', 'noopener,noreferrer');
     } else {
-      // Internal navigation
       onNavigate(image.button_link as MenuType);
     }
+  };
+
+  const handlePrevious = () => {
+    setActiveIndex((prev) => (prev - 1 + rollingImages.length) % rollingImages.length);
+  };
+
+  const handleNext = () => {
+    setActiveIndex((prev) => (prev + 1) % rollingImages.length);
   };
 
   return (
@@ -39,35 +49,67 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
           >
             <img src={img.image_url} className="w-full h-full object-cover" alt="banner" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
-            <div className="absolute bottom-12 left-8 md:left-20 text-white max-w-4xl">
-              <p className="text-kpia-orange font-black text-xs uppercase tracking-[0.4em] mb-3">
-                {img.subtitle}
-              </p>
-              <h2 className="text-4xl md:text-6xl font-black mb-6 tracking-tighter drop-shadow-2xl leading-[1.1] whitespace-pre-line">
-                {img.title}
-              </h2>
-              <button 
-                onClick={() => handleButtonClick(img)}
-                className="bg-kpia-orange text-white px-10 py-4 rounded-full font-black text-xs uppercase tracking-widest hover:bg-orange-600 transition-all shadow-xl"
-              >
-                {img.button_text}
-              </button>
-            </div>
+            {(img.subtitle || img.title || img.button_text) && (
+              <div className="absolute bottom-12 left-8 md:left-20 text-white max-w-4xl">
+                {img.subtitle && (
+                  <p className="text-kpia-orange font-black text-xs uppercase tracking-[0.4em] mb-3">
+                    {img.subtitle}
+                  </p>
+                )}
+                {img.title && (
+                  <h2 className="text-4xl md:text-6xl font-black mb-6 tracking-tighter drop-shadow-2xl leading-[1.1] whitespace-pre-line">
+                    {img.title}
+                  </h2>
+                )}
+                {img.button_text && img.button_link && (
+                  <button 
+                    onClick={() => handleButtonClick(img)}
+                    className="bg-kpia-orange text-white px-10 py-4 rounded-full font-black text-xs uppercase tracking-widest hover:bg-orange-600 transition-all shadow-xl"
+                  >
+                    {img.button_text}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         )) : (
           <div className="flex items-center justify-center h-full bg-slate-800 text-white/20 text-xl font-black italic">
             KPII INNOVATION
           </div>
         )}
-        <div className="absolute bottom-10 right-12 flex gap-2">
-          {rollingImages.map((_, idx) => (
-            <button 
-              key={idx}
-              onClick={() => setActiveIndex(idx)}
-              className={`h-1.5 rounded-full transition-all duration-500 ${idx === activeIndex ? 'bg-kpia-orange w-10' : 'bg-white/30 w-1.5 hover:bg-white/50'}`}
-            />
-          ))}
-        </div>
+        
+        {/* Previous/Next buttons */}
+        {rollingImages.length > 1 && (
+          <>
+            <button
+              onClick={handlePrevious}
+              className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/20 hover:bg-white/40 backdrop-blur-sm rounded-full flex items-center justify-center text-white transition-all opacity-0 group-hover:opacity-100"
+              aria-label="Previous"
+            >
+              <i className="fas fa-chevron-left"></i>
+            </button>
+            <button
+              onClick={handleNext}
+              className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/20 hover:bg-white/40 backdrop-blur-sm rounded-full flex items-center justify-center text-white transition-all opacity-0 group-hover:opacity-100"
+              aria-label="Next"
+            >
+              <i className="fas fa-chevron-right"></i>
+            </button>
+          </>
+        )}
+        
+        {/* Pagination dots */}
+        {rollingImages.length > 1 && (
+          <div className="absolute bottom-10 right-12 flex gap-2">
+            {rollingImages.map((_, idx) => (
+              <button 
+                key={idx}
+                onClick={() => setActiveIndex(idx)}
+                className={`h-1.5 rounded-full transition-all duration-500 ${idx === activeIndex ? 'bg-kpia-orange w-10' : 'bg-white/30 w-1.5 hover:bg-white/50'}`}
+              />
+            ))}
+          </div>
+        )}
       </section>
 
       {/* 2. Welcome Intro */}

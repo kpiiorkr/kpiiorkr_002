@@ -51,6 +51,7 @@ export const AdminPanel: React.FC = () => {
     updateProfileImage,
     settings,
     updateAdminPassword,
+    updateSettings,
     bbsData,
     inquiries,
     deleteInquiry,
@@ -88,6 +89,11 @@ export const AdminPanel: React.FC = () => {
     display_order: 1,
   });
 
+  // Rolling interval state
+  const [intervalSeconds, setIntervalSeconds] = useState(
+    Math.floor((settings.rollingImageInterval || 5000) / 1000)
+  );
+
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (pass === (settings.adminPassword || 'password')) {
@@ -109,6 +115,15 @@ export const AdminPanel: React.FC = () => {
     alert('비밀번호가 성공적으로 변경되었습니다.');
   };
 
+  const handleIntervalChange = () => {
+    if (intervalSeconds < 1 || intervalSeconds > 60) {
+      alert('전환 시간은 1초에서 60초 사이여야 합니다.');
+      return;
+    }
+    updateSettings({ rollingImageInterval: intervalSeconds * 1000 });
+    alert('롤링이미지 전환 시간이 변경되었습니다.');
+  };
+
   const handleRollingImageUpload = async (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
@@ -128,10 +143,20 @@ export const AdminPanel: React.FC = () => {
   const handleSaveRollingImage = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!rollingFormData.image_url || !rollingFormData.subtitle || !rollingFormData.title || 
-        !rollingFormData.button_text || !rollingFormData.button_link) {
-      alert('모든 필드를 입력해주세요.');
+    if (!rollingFormData.image_url) {
+      alert('이미지를 업로드해주세요.');
       return;
+    }
+
+    // 최대 10개 제한 체크 (신규 추가 시)
+    if (editingRollingId === null && settings.rollingImages.length >= 10) {
+      alert('롤링이미지는 최대 10개까지만 추가할 수 있습니다.');
+      return;
+    }
+
+    // 외부 링크 유효성 검사 제거 (http 없이도 가능)
+    if (rollingFormData.link_type === 'external' && rollingFormData.button_link && rollingFormData.button_text) {
+      // 외부 링크는 그대로 저장
     }
 
     try {
@@ -140,10 +165,10 @@ export const AdminPanel: React.FC = () => {
         await updateRollingImage({
           id: editingRollingId,
           image_url: rollingFormData.image_url!,
-          subtitle: rollingFormData.subtitle!,
-          title: rollingFormData.title!,
-          button_text: rollingFormData.button_text!,
-          button_link: rollingFormData.button_link!,
+          subtitle: rollingFormData.subtitle || undefined,
+          title: rollingFormData.title || undefined,
+          button_text: rollingFormData.button_text || undefined,
+          button_link: rollingFormData.button_link || undefined,
           link_type: rollingFormData.link_type!,
           display_order: rollingFormData.display_order!,
         });
@@ -152,10 +177,10 @@ export const AdminPanel: React.FC = () => {
         // Add new
         await addRollingImage({
           image_url: rollingFormData.image_url!,
-          subtitle: rollingFormData.subtitle!,
-          title: rollingFormData.title!,
-          button_text: rollingFormData.button_text!,
-          button_link: rollingFormData.button_link!,
+          subtitle: rollingFormData.subtitle || undefined,
+          title: rollingFormData.title || undefined,
+          button_text: rollingFormData.button_text || undefined,
+          button_link: rollingFormData.button_link || undefined,
           link_type: rollingFormData.link_type!,
           display_order: rollingFormData.display_order!,
         });
@@ -183,10 +208,10 @@ export const AdminPanel: React.FC = () => {
     setEditingRollingId(image.id);
     setRollingFormData({
       image_url: image.image_url,
-      subtitle: image.subtitle,
-      title: image.title,
-      button_text: image.button_text,
-      button_link: image.button_link,
+      subtitle: image.subtitle || '',
+      title: image.title || '',
+      button_text: image.button_text || '',
+      button_link: image.button_link || '',
       link_type: image.link_type,
       display_order: image.display_order,
     });
@@ -472,29 +497,64 @@ export const AdminPanel: React.FC = () => {
                 Change Password
               </button>
             </div>
+
+            <div className="p-5 bg-orange-50 rounded-2xl border border-orange-200">
+              <label className="block text-[10px] font-black text-orange-600 mb-2 uppercase tracking-widest">
+                롤링이미지 전환 시간 (초)
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  value={intervalSeconds}
+                  onChange={e => setIntervalSeconds(Number(e.target.value))}
+                  className="flex-1 p-3 border border-orange-200 rounded-xl text-sm font-bold"
+                  min="1"
+                  max="60"
+                  placeholder="초 단위"
+                />
+                <button
+                  onClick={handleIntervalChange}
+                  className="px-6 bg-kpia-orange text-white rounded-xl text-xs font-black hover:bg-orange-600 transition-all"
+                >
+                  적용
+                </button>
+              </div>
+              <p className="text-[9px] text-orange-600 mt-2">
+                현재: {Math.floor((settings.rollingImageInterval || 5000) / 1000)}초마다 전환
+              </p>
+            </div>
           </div>
         </section>
       </div>
 
       {/* Rolling Images Management Section */}
       <section className="bg-white p-10 rounded-[40px] shadow-2xl border border-gray-100">
-        <div className="flex items-center mb-8">
-          <div className="w-10 h-10 bg-kpia-orange text-white rounded-xl flex items-center justify-center mr-4 shadow-lg">
-            <i className="fas fa-images" />
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center">
+            <div className="w-10 h-10 bg-kpia-orange text-white rounded-xl flex items-center justify-center mr-4 shadow-lg">
+              <i className="fas fa-images" />
+            </div>
+            <h3 className="text-xl font-black">
+              메인 롤링 이미지 관리
+            </h3>
           </div>
-          <h3 className="text-xl font-black">
-            메인 롤링 이미지 관리
-          </h3>
+          <span className="text-sm font-black text-slate-400">
+            {settings.rollingImages.length} / 10
+          </span>
         </div>
 
         {/* Rolling Images List */}
         <div className="space-y-4 mb-8">
           {settings.rollingImages.map((img) => (
             <div key={img.id} className="p-6 bg-slate-50 rounded-3xl border border-slate-100 flex items-center gap-6">
-              <img src={img.image_url} alt={img.title} className="w-32 h-20 object-cover rounded-2xl" />
+              <img src={img.image_url} alt={img.title || '롤링이미지'} className="w-32 h-20 object-cover rounded-2xl" />
               <div className="flex-1">
-                <h4 className="font-black text-slate-800 mb-1">{img.title}</h4>
-                <p className="text-xs text-slate-400">{img.subtitle}</p>
+                <h4 className="font-black text-slate-800 mb-1">
+                  {img.title || '(제목 없음)'}
+                </h4>
+                <p className="text-xs text-slate-400">
+                  {img.subtitle || '(부제목 없음)'}
+                </p>
                 <div className="flex items-center gap-2 mt-2">
                   <span className="text-[10px] bg-slate-200 px-2 py-1 rounded font-bold">
                     순서: {img.display_order}
@@ -502,6 +562,11 @@ export const AdminPanel: React.FC = () => {
                   <span className="text-[10px] bg-slate-200 px-2 py-1 rounded font-bold">
                     {img.link_type === 'internal' ? '내부링크' : '외부링크'}
                   </span>
+                  {!img.button_text && (
+                    <span className="text-[10px] bg-yellow-100 text-yellow-700 px-2 py-1 rounded font-bold">
+                      버튼 없음
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="flex gap-2">
@@ -530,7 +595,9 @@ export const AdminPanel: React.FC = () => {
           
           <div className="space-y-5">
             <div>
-              <label className="block text-xs font-black text-slate-600 mb-2">이미지 업로드</label>
+              <label className="block text-xs font-black text-slate-600 mb-2">
+                이미지 업로드 <span className="text-red-500">*</span>
+              </label>
               <input
                 type="file"
                 accept="image/*"
@@ -543,7 +610,9 @@ export const AdminPanel: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-black text-slate-600 mb-2">부제목 (Subtitle)</label>
+              <label className="block text-xs font-black text-slate-600 mb-2">
+                부제목 (Subtitle) <span className="text-slate-400 text-[10px] font-normal">(선택사항)</span>
+              </label>
               <input
                 type="text"
                 value={rollingFormData.subtitle || ''}
@@ -554,7 +623,9 @@ export const AdminPanel: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-black text-slate-600 mb-2">제목 (Title)</label>
+              <label className="block text-xs font-black text-slate-600 mb-2">
+                제목 (Title) <span className="text-slate-400 text-[10px] font-normal">(선택사항)</span>
+              </label>
               <textarea
                 value={rollingFormData.title || ''}
                 onChange={e => setRollingFormData(prev => ({ ...prev, title: e.target.value }))}
@@ -566,7 +637,9 @@ export const AdminPanel: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-black text-slate-600 mb-2">버튼 텍스트</label>
+              <label className="block text-xs font-black text-slate-600 mb-2">
+                버튼 텍스트 <span className="text-slate-400 text-[10px] font-normal">(선택사항 - 없으면 버튼 미표시)</span>
+              </label>
               <input
                 type="text"
                 value={rollingFormData.button_text || ''}
@@ -591,6 +664,7 @@ export const AdminPanel: React.FC = () => {
             <div>
               <label className="block text-xs font-black text-slate-600 mb-2">
                 {rollingFormData.link_type === 'internal' ? '이동할 페이지' : '외부 URL'}
+                {rollingFormData.button_text && <span className="text-slate-400 text-[10px] font-normal ml-1">(버튼 텍스트가 있을 때 사용)</span>}
               </label>
               {rollingFormData.link_type === 'internal' ? (
                 <select
@@ -605,11 +679,11 @@ export const AdminPanel: React.FC = () => {
                 </select>
               ) : (
                 <input
-                  type="url"
+                  type="text"
                   value={rollingFormData.button_link || ''}
                   onChange={e => setRollingFormData(prev => ({ ...prev, button_link: e.target.value }))}
                   className="w-full p-3 border border-gray-200 rounded-xl text-sm"
-                  placeholder="https://example.com"
+                  placeholder="example.com 또는 https://example.com"
                 />
               )}
             </div>
@@ -628,9 +702,15 @@ export const AdminPanel: React.FC = () => {
             <div className="flex gap-3 pt-4">
               <button
                 type="submit"
-                className="flex-1 bg-kpia-orange text-white py-4 rounded-2xl font-black text-sm hover:bg-orange-600 transition-all"
+                disabled={settings.rollingImages.length >= 10 && editingRollingId === null}
+                className={`flex-1 py-4 rounded-2xl font-black text-sm transition-all ${
+                  settings.rollingImages.length >= 10 && editingRollingId === null
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-kpia-orange text-white hover:bg-orange-600'
+                }`}
               >
-                {editingRollingId !== null ? '수정 완료' : '추가하기'}
+                {editingRollingId !== null ? '수정 완료' : 
+                 settings.rollingImages.length >= 10 ? '최대 개수 도달 (10개)' : '추가하기'}
               </button>
               {editingRollingId !== null && (
                 <button
