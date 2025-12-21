@@ -39,6 +39,7 @@ interface AppContextType {
   addBBSEntry: (entry: BBSEntry) => Promise<void>;
   updateBBSEntry: (entry: BBSEntry) => Promise<void>;
   deleteBBSEntry: (id: string) => Promise<void>;
+  updateBBSOrder: (category: MenuType, items: BBSEntry[]) => Promise<void>;
 
   addInquiry: (inquiry: Inquiry) => Promise<void>;
   deleteInquiry: (id: string) => Promise<void>;
@@ -130,6 +131,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       const { data, error } = await supabase
         .from('bbs_entries')
         .select('*')
+        .order('display_order', { ascending: true })
         .order('date', { ascending: false });
 
       if (error) {
@@ -148,6 +150,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           imageUrl: item.image_url,
           fileName: item.file_name,
           fileSize: item.file_size,
+          displayOrder: item.display_order || 1,
         }));
         setBbsData(transformedData);
         console.log('Loaded BBS data from Supabase:', transformedData.length);
@@ -370,6 +373,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     } catch (e) {
       console.error('Error deleting BBS entry:', e);
       alert('게시글 삭제에 실패했습니다.');
+      throw e;
+    }
+  }, []);
+
+  // BBS 순서 업데이트
+  const updateBBSOrder = useCallback(async (category: MenuType, items: BBSEntry[]) => {
+    try {
+      // 순서대로 display_order 업데이트
+      const updates = items.map((item, index) => 
+        supabase
+          .from('bbs_entries')
+          .update({ display_order: index + 1 })
+          .eq('id', item.id)
+      );
+
+      await Promise.all(updates);
+
+      // 로컬 state 업데이트
+      setBbsData(prev => 
+        prev.map(entry => {
+          const updated = items.find(i => i.id === entry.id);
+          return updated ? { ...entry, displayOrder: items.indexOf(updated) + 1 } : entry;
+        })
+      );
+
+      console.log('BBS order updated successfully');
+    } catch (e) {
+      console.error('Error updating BBS order:', e);
+      alert('순서 변경에 실패했습니다.');
       throw e;
     }
   }, []);
@@ -624,6 +656,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     addBBSEntry,
     updateBBSEntry,
     deleteBBSEntry,
+    updateBBSOrder,
     addInquiry,
     deleteInquiry,
     updateSettings,

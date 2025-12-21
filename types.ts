@@ -18,6 +18,7 @@ export interface BBSEntry {
   imageUrl?: string;
   fileName?: string;
   fileSize?: number;
+  displayOrder?: number; // 추가
 }
 
 export interface Inquiry {
@@ -42,7 +43,7 @@ export interface RollingImage {
 export interface AppSettings {
   showSidebar: boolean;
   rollingImages: RollingImage[];
-  rollingImageInterval: number; // milliseconds
+  rollingImageInterval: number;
   founderImageUrl: string;
   chairmanImageUrl: string;
   logoImageUrl: string;
