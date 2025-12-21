@@ -473,7 +473,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, []);
 
-  // Profile image URLs (Supabase settings table)
+  // Profile image URLs (Supabase settings table) 
   const updateProfileImage = useCallback(
     async (
       type: 'founder' | 'chairman' | 'logo',
@@ -518,6 +518,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     },
     [settingsRowId]
   );
+ 
 
   const value: AppContextType = {
     bbsData,
