@@ -36,15 +36,15 @@ interface AppContextType {
   setIsAdmin: (val: boolean) => void;
   toggleSidebar: () => void;
 
-  addBBSEntry: (entry: BBSEntry) => void;
-  updateBBSEntry: (entry: BBSEntry) => void;
-  deleteBBSEntry: (id: string) => void;
+  addBBSEntry: (entry: BBSEntry) => Promise<void>;
+  updateBBSEntry: (entry: BBSEntry) => Promise<void>;
+  deleteBBSEntry: (id: string) => Promise<void>;
 
-  addInquiry: (inquiry: Inquiry) => void;
-  deleteInquiry: (id: string) => void;
+  addInquiry: (inquiry: Inquiry) => Promise<void>;
+  deleteInquiry: (id: string) => Promise<void>;
 
   updateSettings: (updates: Partial<AppSettings>) => void;
-  updateAdminPassword: (password: string) => void;
+  updateAdminPassword: (password: string) => Promise<void>;
 
   addRollingImage: (image: Omit<RollingImage, 'id'>) => Promise<void>;
   updateRollingImage: (image: RollingImage) => Promise<void>;
@@ -124,6 +124,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, []);
 
+  // Supabase에서 BBS 데이터 로드
+  const loadBBSData = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('bbs_entries')
+        .select('*')
+        .order('date', { ascending: false });
+
+      if (error) {
+        console.error('Failed to load BBS data:', error);
+        return;
+      }
+
+      if (data && data.length > 0) {
+        const transformedData = data.map((item: any) => ({
+          id: item.id,
+          category: item.category,
+          title: item.title,
+          content: item.content,
+          author: item.author,
+          date: item.date,
+          imageUrl: item.image_url,
+          fileName: item.file_name,
+          fileSize: item.file_size,
+        }));
+        setBbsData(transformedData);
+        console.log('Loaded BBS data from Supabase:', transformedData.length);
+      }
+    } catch (e) {
+      console.error('Error loading BBS data:', e);
+    }
+  }, []);
+
   // Supabase에서 inquiries 로드
   const loadInquiries = useCallback(async () => {
     try {
@@ -169,17 +202,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     const loadFromStorageAndSupabase = async () => {
       try {
-        const savedBbs = localStorage.getItem(STORAGE_KEYS.BBS);
         const savedAdmin = localStorage.getItem('kpii_is_admin');
-
-        if (savedBbs) setBbsData(JSON.parse(savedBbs));
         if (savedAdmin) setIsAdminState(savedAdmin === 'true');
 
-        // Supabase settings를 먼저 로드 (우선순위)
+        // Supabase settings를 먼저 로드
         const { data, error } = await supabase
           .from('settings')
           .select('*')
-          .order('created_at', { ascending: true })
+          .order('updated_at', { ascending: false })
           .limit(1)
           .single();
 
@@ -207,6 +237,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           setSettings(prev => ({ ...prev, ...otherSettings }));
         }
 
+        // BBS 데이터 로드 (Supabase 우선)
+        await loadBBSData();
+
         // Rolling images 로드
         await loadRollingImages();
 
@@ -224,17 +257,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     };
 
     loadFromStorageAndSupabase();
-  }, [loadRollingImages, loadInquiries, loadAdminPassword]);
+  }, [loadRollingImages, loadInquiries, loadAdminPassword, loadBBSData]);
 
-  // localStorage 저장 (비밀번호 제외)
+  // localStorage 저장 (비밀번호, BBS, inquiries 제외)
   useEffect(() => {
     if (!isInitialized) return;
 
     try {
-      localStorage.setItem(
-        STORAGE_KEYS.BBS,
-        JSON.stringify(bbsData)
-      );
+      // BBS와 inquiries는 Supabase에만 저장
       
       // settings에서 adminPassword 제외하고 저장
       const { adminPassword, ...settingsToSave } = settings;
@@ -242,45 +272,111 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         STORAGE_KEYS.SETTINGS,
         JSON.stringify(settingsToSave)
       );
-      
-      // inquiries는 localStorage에 저장하지 않음 (Supabase만 사용)
     } catch (e) {
       console.warn(
-        'Storage quota exceeded. Base64 images may be too large.',
+        'Storage quota exceeded.',
         e
       );
     }
-  }, [bbsData, settings, isInitialized]);
+  }, [settings, isInitialized]);
 
   const setIsAdmin = useCallback((val: boolean) => {
     setIsAdminState(val);
     localStorage.setItem('kpii_is_admin', String(val));
   }, []);
 
-  // BBS
-  const addBBSEntry = useCallback((entry: BBSEntry) => {
-    setBbsData(prev => [entry, ...prev]);
+  // BBS (Supabase 동기화)
+  const addBBSEntry = useCallback(async (entry: BBSEntry) => {
+    try {
+      const { error } = await supabase
+        .from('bbs_entries')
+        .insert([{
+          id: entry.id,
+          category: entry.category,
+          title: entry.title,
+          content: entry.content,
+          author: entry.author,
+          date: entry.date,
+          image_url: entry.imageUrl,
+          file_name: entry.fileName,
+          file_size: entry.fileSize,
+        }]);
+
+      if (error) {
+        console.error('Failed to save BBS entry:', error);
+        throw error;
+      }
+
+      setBbsData(prev => [entry, ...prev]);
+      console.log('BBS entry saved to Supabase');
+    } catch (e) {
+      console.error('Error adding BBS entry:', e);
+      alert('게시글 저장에 실패했습니다.');
+      throw e;
+    }
   }, []);
 
   const updateBBSEntry = useCallback(
-    (entry: BBSEntry) => {
-      setBbsData(prev =>
-        prev.map(b => (b.id === entry.id ? entry : b))
-      );
+    async (entry: BBSEntry) => {
+      try {
+        const { error } = await supabase
+          .from('bbs_entries')
+          .update({
+            category: entry.category,
+            title: entry.title,
+            content: entry.content,
+            author: entry.author,
+            date: entry.date,
+            image_url: entry.imageUrl,
+            file_name: entry.fileName,
+            file_size: entry.fileSize,
+          })
+          .eq('id', entry.id);
+
+        if (error) {
+          console.error('Failed to update BBS entry:', error);
+          throw error;
+        }
+
+        setBbsData(prev =>
+          prev.map(b => (b.id === entry.id ? entry : b))
+        );
+        console.log('BBS entry updated in Supabase');
+      } catch (e) {
+        console.error('Error updating BBS entry:', e);
+        alert('게시글 수정에 실패했습니다.');
+        throw e;
+      }
     },
     []
   );
 
-  const deleteBBSEntry = useCallback((id: string) => {
-    setBbsData(prev =>
-      prev.filter(entry => entry.id !== id)
-    );
+  const deleteBBSEntry = useCallback(async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('bbs_entries')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.error('Failed to delete BBS entry:', error);
+        throw error;
+      }
+
+      setBbsData(prev =>
+        prev.filter(entry => entry.id !== id)
+      );
+      console.log('BBS entry deleted from Supabase');
+    } catch (e) {
+      console.error('Error deleting BBS entry:', e);
+      alert('게시글 삭제에 실패했습니다.');
+      throw e;
+    }
   }, []);
 
   // Inquiry (Supabase 동기화)
   const addInquiry = useCallback(async (inq: Inquiry) => {
     try {
-      // Supabase에 저장
       const { error } = await supabase
         .from('inquiries')
         .insert([{
@@ -292,40 +388,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         }]);
 
       if (error) {
-        console.error('Failed to save inquiry to Supabase:', error);
+        console.error('Failed to save inquiry:', error);
         throw error;
       }
 
-      // 로컬 state 업데이트
       setInquiries(prev => [inq, ...prev]);
-      console.log('Inquiry saved to Supabase successfully');
+      console.log('Inquiry saved to Supabase');
     } catch (e) {
       console.error('Error adding inquiry:', e);
-      alert('문의 저장에 실패했습니다. 다시 시도해주세요.');
+      alert('문의 저장에 실패했습니다.');
+      throw e;
     }
   }, []);
 
   const deleteInquiry = useCallback(async (id: string) => {
     try {
-      // Supabase에서 삭제
       const { error } = await supabase
         .from('inquiries')
         .delete()
         .eq('id', id);
 
       if (error) {
-        console.error('Failed to delete inquiry from Supabase:', error);
+        console.error('Failed to delete inquiry:', error);
         throw error;
       }
 
-      // 로컬 state 업데이트
       setInquiries(prev =>
         prev.filter(inq => inq.id !== id)
       );
-      console.log('Inquiry deleted from Supabase successfully');
+      console.log('Inquiry deleted from Supabase');
     } catch (e) {
       console.error('Error deleting inquiry:', e);
       alert('문의 삭제에 실패했습니다.');
+      throw e;
     }
   }, []);
 
@@ -344,7 +439,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   const updateAdminPassword = useCallback(
     async (password: string) => {
       try {
-        // Supabase에 저장
         const { error } = await supabase
           .from('admin_settings')
           .upsert({
@@ -355,20 +449,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           });
 
         if (error) {
-          console.error('Failed to save password to Supabase:', error);
+          console.error('Failed to save password:', error);
           throw error;
         }
 
-        // 로컬 state 업데이트
         setSettings(prev => ({
           ...prev,
           adminPassword: password,
         }));
         
-        console.log('Admin password saved to Supabase successfully');
+        console.log('Admin password saved to Supabase');
       } catch (e) {
         console.error('Error updating admin password:', e);
         alert('비밀번호 저장에 실패했습니다.');
+        throw e;
       }
     },
     []
@@ -473,7 +567,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, []);
 
-  // Profile image URLs (Supabase settings table) 
+  // Profile image URLs (Supabase settings table)
   const updateProfileImage = useCallback(
     async (
       type: 'founder' | 'chairman' | 'logo',
@@ -518,7 +612,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     },
     [settingsRowId]
   );
- 
 
   const value: AppContextType = {
     bbsData,
