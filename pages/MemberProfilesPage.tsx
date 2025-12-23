@@ -537,7 +537,6 @@ export const MemberProfilesPage: React.FC = () => {
                   {editingMember ? '수정 완료' : '등록 하기'}
                 </button>
               </div>
-            </form>
           </div>
         </div>
       )}
