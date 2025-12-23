@@ -83,11 +83,13 @@ export const MemberProfilesPage: React.FC = () => {
     }
     
     const rows: MemberProfile[][] = [];
+    let currentIdx = 0;
     
     rowLayout.forEach((count, rowIdx) => {
       const rowMembers = filteredMembers.filter(m => m.row_number === rowIdx + 1);
       if (rowMembers.length > 0) {
         rows.push(rowMembers.slice(0, count));
+        currentIdx += rowMembers.length;
       }
     });
     
@@ -262,12 +264,13 @@ export const MemberProfilesPage: React.FC = () => {
   // 레이아웃 저장
   const saveLayout = async () => {
     try {
+      // 각 행의 멤버들에게 row_number와 display_order 재할당
       const updatedProfiles: MemberProfile[] = [];
       let globalOrder = 1;
       
       rowLayout.forEach((count, rowIdx) => {
         const rowMembers = memberProfiles.filter(m => m.row_number === rowIdx + 1);
-        rowMembers.slice(0, count).forEach((member) => {
+        rowMembers.slice(0, count).forEach((member, idx) => {
           updatedProfiles.push({
             ...member,
             row_number: rowIdx + 1,
@@ -400,149 +403,7 @@ export const MemberProfilesPage: React.FC = () => {
                           </button>
                         ))}
                       </div>
-                <div>
-                  <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">회사 직책</label>
-                  <input 
-                    type="text" 
-                    value={formData.company_position}
-                    onChange={(e) => setFormData({...formData, company_position: e.target.value})}
-                    className="w-full p-3 bg-slate-50 border border-gray-100 rounded-xl font-bold"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">
-                  프로필 이미지 * {isUploading && <span className="text-orange-500">(업로드 중...)</span>}
-                </label>
-                <input 
-                  type="file" 
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  disabled={isUploading}
-                  className="w-full p-3 bg-slate-50 border border-gray-100 rounded-xl text-sm"
-                />
-                {formData.image_url && (
-                  <div className="mt-3 p-3 bg-slate-50 rounded-xl flex items-center gap-3">
-                    <img src={formData.image_url} className="w-16 h-16 rounded-full object-cover" alt="Preview" />
-                    <span className="text-xs text-green-600 font-bold">✓ 이미지 업로드 완료</span>
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">카테고리</label>
-                <select 
-                  value={formData.category}
-                  onChange={(e) => setFormData({...formData, category: e.target.value as MemberRole})}
-                  className="w-full p-3 bg-slate-50 border border-gray-100 rounded-xl font-bold"
-                >
-                  <option value={MemberRole.BOARD}>이사진</option>
-                  <option value={MemberRole.DIVISION_HEAD}>부분장</option>
-                  <option value={MemberRole.TEAM_LEADER}>팀장</option>
-                  <option value={MemberRole.TEAM_MEMBER}>팀원</option>
-                  <option value={MemberRole.EXECUTIVE}>상임이사</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">이메일</label>
-                <input 
-                  type="email" 
-                  value={formData.email}
-                  onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  className="w-full p-3 bg-slate-50 border border-gray-100 rounded-xl font-bold"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">전문 분야 (최대 5개)</label>
-                <div className="flex gap-2 mb-2">
-                  <input 
-                    type="text" 
-                    value={specialtyInput}
-                    onChange={(e) => setSpecialtyInput(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addSpecialty())}
-                    className="flex-1 p-3 bg-slate-50 border border-gray-100 rounded-xl font-bold"
-                    placeholder="전문분야 입력 후 Enter"
-                  />
-                  <button 
-                    type="button"
-                    onClick={addSpecialty}
-                    className="px-4 bg-blue-500 text-white rounded-xl font-bold hover:bg-blue-600"
-                  >
-                    추가
-                  </button>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {formData.specialty.map((s, idx) => (
-                    <span key={idx} className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm font-bold flex items-center gap-2">
-                      {s}
-                      <button type="button" onClick={() => removeSpecialty(idx)} className="text-blue-400 hover:text-blue-600">
-                        <i className="fas fa-times text-xs"></i>
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">상세 소개</label>
-                <textarea 
-                  rows={4}
-                  value={formData.description}
-                  onChange={(e) => setFormData({...formData, description: e.target.value})}
-                  className="w-full p-3 bg-slate-50 border border-gray-100 rounded-xl font-medium"
-                  placeholder="회원에 대한 상세 소개를 입력하세요"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">행 번호 (1-20)</label>
-                  <input 
-                    type="number" 
-                    min="1"
-                    max="20"
-                    value={formData.row_number}
-                    onChange={(e) => setFormData({...formData, row_number: parseInt(e.target.value)})}
-                    className="w-full p-3 bg-slate-50 border border-gray-100 rounded-xl font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">표시 순서</label>
-                  <input 
-                    type="number" 
-                    min="1"
-                    value={formData.display_order}
-                    onChange={(e) => setFormData({...formData, display_order: parseInt(e.target.value)})}
-                    className="w-full p-3 bg-slate-50 border border-gray-100 rounded-xl font-bold"
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-4 pt-4">
-                <button 
-                  type="button" 
-                  onClick={() => setShowAdminModal(false)}
-                  className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black hover:bg-slate-200 transition-all"
-                >
-                  취소
-                </button>
-                <button 
-                  type="submit" 
-                  disabled={isUploading}
-                  className="flex-1 py-4 bg-slate-900 text-white rounded-2xl font-black hover:bg-black transition-all shadow-xl disabled:bg-slate-400"
-                >
-                  {editingMember ? '수정 완료' : '등록 하기'}
-                </button>
-              </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};    </div>
+                    </div>
                     <button 
                       onClick={() => removeRow(idx)}
                       className="p-2 text-slate-300 hover:text-red-500 transition-colors"
@@ -562,68 +423,66 @@ export const MemberProfilesPage: React.FC = () => {
         {/* Members Layout */}
         <section className="py-16 px-4">
           <div className="max-w-7xl mx-auto flex flex-col items-center gap-12">
-            {memberRows.length > 0 && memberRows.some(row => row.length > 0) ? (
+            {memberRows.length > 0 ? (
               memberRows.map((row, rowIdx) => (
-                row.length > 0 && (
-                  <div 
-                    key={rowIdx} 
-                    className={`grid gap-8 justify-center w-full ${getGridColsClass(row.length)}`}
-                  >
-                    {row.map(member => (
-                      <div
-                        key={member.id}
-                        onClick={() => setSelectedMember(member)}
-                        className="group flex flex-col items-center p-8 bg-white rounded-3xl border border-gray-100 cursor-pointer transition-all duration-500 hover:shadow-2xl hover:border-blue-300 hover:-translate-y-2 w-full max-w-[280px]"
-                      >
-                        <div className="relative mb-6">
-                          <div className="w-44 h-44 rounded-full overflow-hidden border-8 border-white shadow-xl group-hover:border-blue-50 transition-all duration-500 ring-1 ring-gray-100">
-                            <img 
-                              src={member.image_url} 
-                              alt={member.name} 
-                              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                            />
-                          </div>
-                          <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 whitespace-nowrap z-10">
-                            <span className={`px-4 py-1 text-xs font-bold rounded-full text-white shadow-lg ring-4 ring-white ${
-                              member.category === '이사진' ? 'bg-blue-600' : 
-                              member.category === '부분장' ? 'bg-indigo-600' : 
-                              member.category === '팀장' ? 'bg-teal-600' : 'bg-slate-500'
-                            }`}>
-                              {member.category}
-                            </span>
-                          </div>
+                <div 
+                  key={rowIdx} 
+                  className={`grid gap-8 justify-center w-full ${getGridColsClass(row.length)}`}
+                >
+                  {row.map(member => (
+                    <div
+                      key={member.id}
+                      onClick={() => setSelectedMember(member)}
+                      className="group flex flex-col items-center p-8 bg-white rounded-3xl border border-gray-100 cursor-pointer transition-all duration-500 hover:shadow-2xl hover:border-blue-300 hover:-translate-y-2 w-full max-w-[280px]"
+                    >
+                      <div className="relative mb-6">
+                        <div className="w-44 h-44 rounded-full overflow-hidden border-8 border-white shadow-xl group-hover:border-blue-50 transition-all duration-500 ring-1 ring-gray-100">
+                          <img 
+                            src={member.image_url} 
+                            alt={member.name} 
+                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                          />
                         </div>
-                        
-                        <div className="text-center w-full mt-2">
-                          <h3 className="text-xl font-bold text-gray-900 mb-1 group-hover:text-blue-700 transition-colors">{member.name}</h3>
-                          <p className="text-blue-600 font-bold text-sm mb-4 tracking-tight">{member.org_position}</p>
-                          
-                          <div className="pt-4 border-t border-gray-50 flex flex-col items-center">
-                            <p className="text-gray-500 text-xs font-semibold truncate max-w-full mb-1" title={member.company}>{member.company}</p>
-                            <p className="text-gray-400 text-[11px] truncate max-w-full">{member.company_position}</p>
-                          </div>
+                        <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 whitespace-nowrap z-10">
+                          <span className={`px-4 py-1 text-xs font-bold rounded-full text-white shadow-lg ring-4 ring-white ${
+                            member.category === '이사진' ? 'bg-blue-600' : 
+                            member.category === '부분장' ? 'bg-indigo-600' : 
+                            member.category === '팀장' ? 'bg-teal-600' : 'bg-slate-500'
+                          }`}>
+                            {member.category}
+                          </span>
                         </div>
-
-                        {isAdmin && (
-                          <div className="flex gap-2 mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={(e) => { e.stopPropagation(); openEditModal(member); }}
-                              className="px-3 py-1 bg-blue-500 text-white rounded-lg text-xs font-bold hover:bg-blue-600"
-                            >
-                              수정
-                            </button>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleDelete(member.id); }}
-                              className="px-3 py-1 bg-red-500 text-white rounded-lg text-xs font-bold hover:bg-red-600"
-                            >
-                              삭제
-                            </button>
-                          </div>
-                        )}
                       </div>
-                    ))}
-                  </div>
-                )
+                      
+                      <div className="text-center w-full mt-2">
+                        <h3 className="text-xl font-bold text-gray-900 mb-1 group-hover:text-blue-700 transition-colors">{member.name}</h3>
+                        <p className="text-blue-600 font-bold text-sm mb-4 tracking-tight">{member.org_position}</p>
+                        
+                        <div className="pt-4 border-t border-gray-50 flex flex-col items-center">
+                          <p className="text-gray-500 text-xs font-semibold truncate max-w-full mb-1" title={member.company}>{member.company}</p>
+                          <p className="text-gray-400 text-[11px] truncate max-w-full">{member.company_position}</p>
+                        </div>
+                      </div>
+
+                      {isAdmin && (
+                        <div className="flex gap-2 mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); openEditModal(member); }}
+                            className="px-3 py-1 bg-blue-500 text-white rounded-lg text-xs font-bold hover:bg-blue-600"
+                          >
+                            수정
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDelete(member.id); }}
+                            className="px-3 py-1 bg-red-500 text-white rounded-lg text-xs font-bold hover:bg-red-600"
+                          >
+                            삭제
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               ))
             ) : (
               <div className="w-full text-center py-32 bg-white rounded-[3rem] border-4 border-dashed border-slate-100">
@@ -650,6 +509,7 @@ export const MemberProfilesPage: React.FC = () => {
               <i className="fas fa-times text-2xl"></i>
             </button>
 
+            {/* Left Side: Large Image */}
             <div className="md:w-5/12 bg-gray-100 flex items-center justify-center overflow-hidden">
               <img 
                 src={selectedMember.image_url} 
@@ -658,6 +518,7 @@ export const MemberProfilesPage: React.FC = () => {
               />
             </div>
             
+            {/* Right Side: Detailed Content */}
             <div className="md:w-7/12 p-10 md:p-14 overflow-y-auto">
               <div className="mb-8">
                 <span className="inline-block px-4 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-black mb-4 uppercase tracking-widest border border-blue-100">
@@ -678,39 +539,33 @@ export const MemberProfilesPage: React.FC = () => {
                   </div>
                 </div>
                 
-                {selectedMember.specialty && selectedMember.specialty.length > 0 && (
-                  <div>
-                    <h4 className="text-xs font-black text-blue-900/30 uppercase tracking-[0.2em] mb-3">주요 전문 분야</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedMember.specialty.map((s, idx) => (
-                        <span key={idx} className="bg-white text-slate-700 px-4 py-1.5 rounded-full text-sm font-bold border border-slate-200 shadow-sm">
-                          # {s}
-                        </span>
-                      ))}
-                    </div>
+                <div>
+                  <h4 className="text-xs font-black text-blue-900/30 uppercase tracking-[0.2em] mb-3">주요 전문 분야</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedMember.specialty.map((s, idx) => (
+                      <span key={idx} className="bg-white text-slate-700 px-4 py-1.5 rounded-full text-sm font-bold border border-slate-200 shadow-sm">
+                        # {s}
+                      </span>
+                    ))}
                   </div>
-                )}
+                </div>
                 
-                {selectedMember.description && (
-                  <div>
-                    <h4 className="text-xs font-black text-blue-900/30 uppercase tracking-[0.2em] mb-3">상세 소개</h4>
-                    <p className="text-slate-600 leading-relaxed text-lg font-medium">
-                      {selectedMember.description}
-                    </p>
-                  </div>
-                )}
+                <div>
+                  <h4 className="text-xs font-black text-blue-900/30 uppercase tracking-[0.2em] mb-3">상세 소개</h4>
+                  <p className="text-slate-600 leading-relaxed text-lg font-medium">
+                    {selectedMember.description}
+                  </p>
+                </div>
 
-                {selectedMember.email && (
-                  <div className="pt-8 border-t border-slate-100 flex items-center justify-between">
-                    <div>
-                      <h4 className="text-xs font-black text-blue-900/30 uppercase tracking-[0.2em] mb-1">문의 이메일</h4>
-                      <p className="text-blue-600 font-bold hover:underline cursor-pointer text-lg">{selectedMember.email}</p>
-                    </div>
-                    <button className="bg-blue-700 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-800 transition-all shadow-lg text-sm">
-                      메시지 보내기
-                    </button>
+                <div className="pt-8 border-t border-slate-100 flex items-center justify-between">
+                  <div>
+                    <h4 className="text-xs font-black text-blue-900/30 uppercase tracking-[0.2em] mb-1">문의 이메일</h4>
+                    <p className="text-blue-600 font-bold hover:underline cursor-pointer text-lg">{selectedMember.email}</p>
                   </div>
-                )}
+                  <button className="bg-blue-700 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-800 transition-all shadow-lg text-sm">
+                    메시지 보내기
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -755,8 +610,159 @@ export const MemberProfilesPage: React.FC = () => {
                   <input 
                     type="text" 
                     value={formData.company}
-                    onChange={(e) => setFormData({...formData, company: e.target.value})}
-                    className="w-full p-3 bg-slate-50 border border-gray-100 rounded-xl font-bold"
-                    required
-                  />
-                </div>
+                    <parameter name="command">update</parameter>
+<parameter name="id">member_profiles_page</parameter>
+<parameter name="old_str">                  <input
+type="text"
+value={formData.company}</parameter>
+<parameter name="new_str">                  <input
+type="text"
+value={formData.company}
+onChange={(e) => setFormData({...formData, company: e.target.value})}
+className="w-full p-3 bg-slate-50 border border-gray-100 rounded-xl font-bold"
+required
+/>
+</div>
+<div>
+<label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">회사 직책</label>
+<input
+type="text"
+value={formData.company_position}
+onChange={(e) => setFormData({...formData, company_position: e.target.value})}
+className="w-full p-3 bg-slate-50 border border-gray-100 rounded-xl font-bold"
+/>
+</div>
+</div>
+<div>
+            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">
+              프로필 이미지 * {isUploading && <span className="text-orange-500">(업로드 중...)</span>}
+            </label>
+            <input 
+              type="file" 
+              accept="image/*"
+              onChange={handleImageUpload}
+              disabled={isUploading}
+              className="w-full p-3 bg-slate-50 border border-gray-100 rounded-xl text-sm"
+            />
+            {formData.image_url && (
+              <div className="mt-3 p-3 bg-slate-50 rounded-xl flex items-center gap-3">
+                <img src={formData.image_url} className="w-16 h-16 rounded-full object-cover" alt="Preview" />
+                <span className="text-xs text-green-600 font-bold">✓ 이미지 업로드 완료</span>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">카테고리</label>
+            <select 
+              value={formData.category}
+              onChange={(e) => setFormData({...formData, category: e.target.value as MemberRole})}
+              className="w-full p-3 bg-slate-50 border border-gray-100 rounded-xl font-bold"
+            >
+              <option value={MemberRole.BOARD}>이사진</option>
+              <option value={MemberRole.DIVISION_HEAD}>부분장</option>
+              <option value={MemberRole.TEAM_LEADER}>팀장</option>
+              <option value={MemberRole.TEAM_MEMBER}>팀원</option>
+              <option value={MemberRole.EXECUTIVE}>상임이사</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">이메일</label>
+            <input 
+              type="email" 
+              value={formData.email}
+              onChange={(e) => setFormData({...formData, email: e.target.value})}
+              className="w-full p-3 bg-slate-50 border border-gray-100 rounded-xl font-bold"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">전문 분야 (최대 5개)</label>
+            <div className="flex gap-2 mb-2">
+              <input 
+                type="text" 
+                value={specialtyInput}
+                onChange={(e) => setSpecialtyInput(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addSpecialty())}
+                className="flex-1 p-3 bg-slate-50 border border-gray-100 rounded-xl font-bold"
+                placeholder="전문분야 입력 후 Enter"
+              />
+              <button 
+                type="button"
+                onClick={addSpecialty}
+                className="px-4 bg-blue-500 text-white rounded-xl font-bold hover:bg-blue-600"
+              >
+                추가
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {formData.specialty.map((s, idx) => (
+                <span key={idx} className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm font-bold flex items-center gap-2">
+                  {s}
+                  <button type="button" onClick={() => removeSpecialty(idx)} className="text-blue-400 hover:text-blue-600">
+                    <i className="fas fa-times text-xs"></i>
+                  </button>
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">상세 소개</label>
+            <textarea 
+              rows={4}
+              value={formData.description}
+              onChange={(e) => setFormData({...formData, description: e.target.value})}
+              className="w-full p-3 bg-slate-50 border border-gray-100 rounded-xl font-medium"
+              placeholder="회원에 대한 상세 소개를 입력하세요"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">행 번호 (1-20)</label>
+              <input 
+                type="number" 
+                min="1"
+                max="20"
+                value={formData.row_number}
+                onChange={(e) => setFormData({...formData, row_number: parseInt(e.target.value)})}
+                className="w-full p-3 bg-slate-50 border border-gray-100 rounded-xl font-bold"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">표시 순서</label>
+              <input 
+                type="number" 
+                min="1"
+                value={formData.display_order}
+                onChange={(e) => setFormData({...formData, display_order: parseInt(e.target.value)})}
+                className="w-full p-3 bg-slate-50 border border-gray-100 rounded-xl font-bold"
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-4 pt-4">
+            <button 
+              type="button" 
+              onClick={() => setShowAdminModal(false)}
+              className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black hover:bg-slate-200 transition-all"
+            >
+              취소
+            </button>
+            <button 
+              type="submit" 
+              disabled={isUploading}
+              className="flex-1 py-4 bg-slate-900 text-white rounded-2xl font-black hover:bg-black transition-all shadow-xl disabled:bg-slate-400"
+            >
+              {editingMember ? '수정 완료' : '등록 하기'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )}
+</div>
+);
+};</parameter>
