@@ -21,6 +21,7 @@ export interface Database {
           file_name: string | null;
           file_size: number | null;
           created_at: string;
+          display_order: number | null;
         };
         Insert: Omit<Database['public']['Tables']['bbs_entries']['Row'], 'created_at'>;
         Update: Partial<Database['public']['Tables']['bbs_entries']['Insert']>;
@@ -55,6 +56,7 @@ export interface Database {
           logo_url: string | null;
           website: string | null;
           created_at: string;
+          display_order: number | null;
         };
         Insert: Omit<Database['public']['Tables']['member_companies']['Row'], 'created_at'>;
         Update: Partial<Database['public']['Tables']['member_companies']['Insert']>;
@@ -73,6 +75,26 @@ export interface Database {
         };
         Insert: Omit<Database['public']['Tables']['rolling_images']['Row'], 'id' | 'created_at'>;
         Update: Partial<Database['public']['Tables']['rolling_images']['Insert']>;
+      };
+      member_profiles: {
+        Row: {
+          id: string;
+          name: string;
+          org_position: string;
+          company: string;
+          company_position: string;
+          image_url: string;
+          category: string;
+          description: string;
+          specialty: string[];
+          email: string;
+          row_number: number;
+          display_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['member_profiles']['Row'], 'created_at' | 'updated_at'>;
+        Update: Partial<Database['public']['Tables']['member_profiles']['Insert']>;
       };
     };
   };

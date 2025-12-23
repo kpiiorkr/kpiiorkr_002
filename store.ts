@@ -11,6 +11,8 @@ import {
   RollingImage,
   AppSettings,
   Inquiry,
+  MemberProfile,
+  MenuType,
 } from './types';
 
 import {
@@ -29,6 +31,7 @@ const STORAGE_KEYS = {
 interface AppContextType {
   bbsData: BBSEntry[];
   inquiries: Inquiry[];
+  memberProfiles: MemberProfile[];
   settings: AppSettings;
   isAdmin: boolean;
   isSyncing: boolean;
@@ -56,6 +59,13 @@ interface AppContextType {
     type: 'founder' | 'chairman' | 'logo',
     url: string
   ) => Promise<void>;
+
+  // 정회원 프로필 관련 함수
+  loadMemberProfiles: () => Promise<void>;
+  addMemberProfile: (profile: Omit<MemberProfile, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
+  updateMemberProfile: (profile: MemberProfile) => Promise<void>;
+  deleteMemberProfile: (id: string) => Promise<void>;
+  updateMemberProfileOrder: (profiles: MemberProfile[]) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(
@@ -68,9 +78,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   const [isSyncing] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  const [bbsData, setBbsData] =
-    useState<BBSEntry[]>(INITIAL_BBS_DATA);
+  const [bbsData, setBbsData] = useState<BBSEntry[]>(INITIAL_BBS_DATA);
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
+  const [memberProfiles, setMemberProfiles] = useState<MemberProfile[]>([]);
   const [settings, setSettings] = useState<AppSettings>({
     showSidebar: true,
     rollingImages: INITIAL_ROLLING_IMAGES,
@@ -84,9 +94,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     adminPassword: 'password',
   });
   const [isAdmin, setIsAdminState] = useState(false);
-  const [settingsRowId, setSettingsRowId] = useState<
-    string | null
-  >(null);
+  const [settingsRowId, setSettingsRowId] = useState<string | null>(null);
 
   // Supabase에서 rolling images 로드
   const loadRollingImages = useCallback(async () => {
@@ -201,6 +209,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, []);
 
+  // 정회원 프로필 로드
+  const loadMemberProfiles = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('member_profiles')
+        .select('*')
+        .order('row_number', { ascending: true })
+        .order('display_order', { ascending: true });
+
+      if (error) {
+        console.error('Failed to load member profiles:', error);
+        return;
+      }
+
+      if (data && data.length > 0) {
+        const transformedData = data.map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          org_position: item.org_position,
+          company: item.company,
+          company_position: item.company_position,
+          image_url: item.image_url,
+          category: item.category,
+          description: item.description,
+          specialty: item.specialty || [],
+          email: item.email,
+          row_number: item.row_number || 1,
+          display_order: item.display_order || 1,
+          created_at: item.created_at,
+          updated_at: item.updated_at,
+        }));
+        setMemberProfiles(transformedData);
+        console.log('Loaded member profiles from Supabase:', transformedData.length);
+      }
+    } catch (e) {
+      console.error('Error loading member profiles:', e);
+    }
+  }, []);
+
   // localStorage + Supabase settings 로드
   useEffect(() => {
     const loadFromStorageAndSupabase = async () => {
@@ -252,6 +299,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         // Admin password 로드
         await loadAdminPassword();
 
+        // 정회원 프로필 로드
+        await loadMemberProfiles();
+
       } catch (e) {
         console.error('Data recovery failed', e);
       } finally {
@@ -260,7 +310,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     };
 
     loadFromStorageAndSupabase();
-  }, [loadRollingImages, loadInquiries, loadAdminPassword, loadBBSData]);
+  }, [loadRollingImages, loadInquiries, loadAdminPassword, loadBBSData, loadMemberProfiles]);
 
   // localStorage 저장 (비밀번호, BBS, inquiries 제외)
   useEffect(() => {
@@ -645,9 +695,117 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     [settingsRowId]
   );
 
+  // 정회원 프로필 CRUD
+  const addMemberProfile = useCallback(async (profile: Omit<MemberProfile, 'id' | 'created_at' | 'updated_at'>) => {
+    try {
+      const newProfile = {
+        id: Date.now().toString(),
+        ...profile,
+      };
+
+      const { error } = await supabase
+        .from('member_profiles')
+        .insert([newProfile]);
+
+      if (error) {
+        console.error('Failed to add member profile:', error);
+        throw error;
+      }
+
+      setMemberProfiles(prev => [...prev, newProfile as MemberProfile]);
+      console.log('Member profile added to Supabase');
+    } catch (e) {
+      console.error('Error adding member profile:', e);
+      alert('프로필 추가에 실패했습니다.');
+      throw e;
+    }
+  }, []);
+
+  const updateMemberProfile = useCallback(async (profile: MemberProfile) => {
+    try {
+      const { error } = await supabase
+        .from('member_profiles')
+        .update({
+          name: profile.name,
+          org_position: profile.org_position,
+          company: profile.company,
+          company_position: profile.company_position,
+          image_url: profile.image_url,
+          category: profile.category,
+          description: profile.description,
+          specialty: profile.specialty,
+          email: profile.email,
+          row_number: profile.row_number,
+          display_order: profile.display_order,
+        })
+        .eq('id', profile.id);
+
+      if (error) {
+        console.error('Failed to update member profile:', error);
+        throw error;
+      }
+
+      setMemberProfiles(prev =>
+        prev.map(p => (p.id === profile.id ? profile : p))
+      );
+      console.log('Member profile updated in Supabase');
+    } catch (e) {
+      console.error('Error updating member profile:', e);
+      alert('프로필 수정에 실패했습니다.');
+      throw e;
+    }
+  }, []);
+
+  const deleteMemberProfile = useCallback(async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('member_profiles')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.error('Failed to delete member profile:', error);
+        throw error;
+      }
+
+      setMemberProfiles(prev =>
+        prev.filter(p => p.id !== id)
+      );
+      console.log('Member profile deleted from Supabase');
+    } catch (e) {
+      console.error('Error deleting member profile:', e);
+      alert('프로필 삭제에 실패했습니다.');
+      throw e;
+    }
+  }, []);
+
+  const updateMemberProfileOrder = useCallback(async (profiles: MemberProfile[]) => {
+    try {
+      const updates = profiles.map(profile => 
+        supabase
+          .from('member_profiles')
+          .update({ 
+            row_number: profile.row_number,
+            display_order: profile.display_order 
+          })
+          .eq('id', profile.id)
+      );
+
+      await Promise.all(updates);
+
+      setMemberProfiles(profiles);
+      console.log('Member profile order updated successfully');
+    } catch (e) {
+      console.error('Error updating member profile order:', e);
+      alert('순서 변경에 실패했습니다.');
+      throw e;
+    }
+  }, []);
+
   const value: AppContextType = {
     bbsData,
     inquiries,
+    memberProfiles,
     settings,
     isAdmin,
     isSyncing,
@@ -666,6 +824,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     deleteRollingImage,
     loadRollingImages,
     updateProfileImage,
+    loadMemberProfiles,
+    addMemberProfile,
+    updateMemberProfile,
+    deleteMemberProfile,
+    updateMemberProfileOrder,
   };
 
   return React.createElement(

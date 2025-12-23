@@ -87,6 +87,7 @@ export const MENUS: MenuType[] = [
   '자료실',
   '회장사소개',
   '회원사소개',
+  '정회원소개',
   '설립자소개',
   'Contact us'
 ];

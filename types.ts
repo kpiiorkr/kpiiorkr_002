@@ -5,6 +5,7 @@ export type MenuType =
   | '자료실'
   | '회장사소개'
   | '회원사소개'
+  | '정회원소개'
   | '설립자소개'
   | 'Contact us';
 
@@ -18,7 +19,7 @@ export interface BBSEntry {
   imageUrl?: string;
   fileName?: string;
   fileSize?: number;
-  displayOrder?: number; // 추가
+  displayOrder?: number;
 }
 
 export interface Inquiry {
@@ -48,4 +49,30 @@ export interface AppSettings {
   chairmanImageUrl: string;
   logoImageUrl: string;
   adminPassword?: string;
+}
+
+// 정회원 프로필 인터페이스
+export enum MemberRole {
+  BOARD = '이사진',
+  DIVISION_HEAD = '부분장',
+  TEAM_LEADER = '팀장',
+  TEAM_MEMBER = '팀원',
+  EXECUTIVE = '상임이사'
+}
+
+export interface MemberProfile {
+  id: string;
+  name: string;
+  org_position: string;
+  company: string;
+  company_position: string;
+  image_url: string;
+  category: MemberRole;
+  description: string;
+  specialty: string[];
+  email: string;
+  row_number: number;
+  display_order: number;
+  created_at?: string;
+  updated_at?: string;
 }

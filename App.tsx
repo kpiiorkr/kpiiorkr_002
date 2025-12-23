@@ -14,6 +14,7 @@ import { AdminPanel } from './components/AdminPanel.tsx';
 import { ExternalNoticePage } from './pages/ExternalNoticePage.tsx';
 import { ExternalActivityPage } from './pages/ExternalActivityPage.tsx';
 import { ExternalResourcePage } from './pages/ExternalResourcePage.tsx';
+import { MemberProfilesPage } from './pages/MemberProfilesPage.tsx';
 
 const App: React.FC = () => {
   const { settings, isAdmin, toggleSidebar } = useApp();
@@ -31,6 +32,9 @@ const App: React.FC = () => {
     if (currentMenu === '공지사항') return <ExternalNoticePage />;
     if (currentMenu === '사회공헌활동') return <ExternalActivityPage />;
     if (currentMenu === '자료실') return <ExternalResourcePage />;
+    
+    // 정회원소개 페이지
+    if (currentMenu === '정회원소개') return <MemberProfilesPage />;
     
     // 회원사소개는 일반 BBS 페이지 사용
     return <BBSPage category={currentMenu} />;
