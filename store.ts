@@ -698,22 +698,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   // 정회원 프로필 CRUD
   const addMemberProfile = useCallback(async (profile: Omit<MemberProfile, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      const newProfile = {
-        id: Date.now().toString(),
-        ...profile,
-      };
-
-      const { error } = await supabase
+      // Supabase에 insert하면 자동으로 UUID가 생성됨
+      const { data, error } = await supabase
         .from('member_profiles')
-        .insert([newProfile]);
+        .insert([profile])
+        .select()
+        .single();
 
       if (error) {
         console.error('Failed to add member profile:', error);
         throw error;
       }
 
-      setMemberProfiles(prev => [...prev, newProfile as MemberProfile]);
-      console.log('Member profile added to Supabase');
+      if (data) {
+        setMemberProfiles(prev => [...prev, data as MemberProfile]);
+        console.log('Member profile added to Supabase');
+      }
     } catch (e) {
       console.error('Error adding member profile:', e);
       alert('프로필 추가에 실패했습니다.');
