@@ -297,8 +297,7 @@ export const MemberProfilesPage: React.FC = () => {
           <div className="max-w-7xl mx-auto text-center relative z-10">
             <h1 className="text-5xl md:text-7xl font-black mb-8 tracking-tighter italic uppercase">Member Directory</h1>
             <p className="text-xl text-slate-300 max-w-2xl mx-auto leading-relaxed font-medium">
-              대한민국 특허 정보 산업을 이끄는 주역들을 소개합니다.<br/>
-              KPIIOR의 핵심 멤버십을 확인해보세요.
+              한국프로세스혁신협회의 멤버를 소개합니다.
             </p>
           </div>
         </section>
