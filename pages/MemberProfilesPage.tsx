@@ -309,10 +309,10 @@ export const MemberProfilesPage: React.FC = () => {
               <div className="flex items-center space-x-1">
                 {[
                   { label: '전체보기', value: 'ALL' },
-                  { label: '대표단', value: MemberRole.BOARD },
-                  { label: '이사진', value: MemberRole.DIVISION_HEAD },
-                  { label: '부문장', value: MemberRole.TEAM_LEADER },
-                  { label: '팀장', value: MemberRole.TEAM_MEMBER }
+                  { label: '이사진', value: MemberRole.BOARD },
+                  { label: '부문장', value: MemberRole.DIVISION_HEAD },
+                  { label: '팀장', value: MemberRole.TEAM_LEADER },
+                  { label: '팀원', value: MemberRole.TEAM_MEMBER }
                 ].map((item) => (
                   <button 
                     key={item.value}
