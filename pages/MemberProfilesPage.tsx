@@ -491,7 +491,7 @@ export const MemberProfilesPage: React.FC = () => {
         </section>
       </main>
 
-      {/* Part 2에서 계속... */}
+{/* Part 2에서 계속... */}
 
       {/* Member Detail Modal */}
       {selectedMember && (
@@ -565,9 +565,12 @@ export const MemberProfilesPage: React.FC = () => {
                       <h4 className="text-xs font-black text-blue-900/30 uppercase tracking-[0.2em] mb-1">문의 이메일</h4>
                       <p className="text-blue-600 font-bold hover:underline cursor-pointer text-lg">{selectedMember.email}</p>
                     </div>
-                    <button className="bg-blue-700 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-800 transition-all shadow-lg text-sm">
-                      메시지 보내기
-                    </button>
+                    <a 
+                      href={`mailto:${selectedMember.email}`}
+                      className="bg-blue-700 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-800 transition-all shadow-lg text-sm inline-block"
+                    >
+                      메일 보내기
+                    </a>
                   </div>
                 )}
               </div>

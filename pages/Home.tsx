@@ -20,23 +20,22 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
     return () => clearInterval(timer);
   }, [rollingImages.length, interval]);
 
-  // 🎯 이미지 또는 버튼 클릭 핸들러
-  const handleImageClick = (image: typeof rollingImages[0]) => {
-    // 버튼이 없고 링크가 있으면 이미지 전체를 클릭 가능하게
-    if (!image.button_link) return;
-    
-    if (image.link_type === 'external') {
-      // 외부 링크: http/https가 없으면 추가
-      let url = image.button_link;
-      if (!url.startsWith('http://') && !url.startsWith('https://')) {
-        url = 'https://' + url;
-      }
-      window.open(url, '_blank', 'noopener,noreferrer');
-    } else {
-      // 내부 페이지 이동
-      onNavigate(image.button_link as MenuType);
+// 버튼 클릭 핸들러 (이벤트 전파 중지 추가)
+const handleButtonClick = (e: React.MouseEvent, image: typeof rollingImages[0]) => {
+  e.stopPropagation(); // 이미지 클릭 이벤트 전파 방지
+  
+  if (!image.button_link) return;
+  
+  if (image.link_type === 'external') {
+    let url = image.button_link;
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = 'https://' + url;
     }
-  };
+    window.open(url, '_blank', 'noopener,noreferrer');
+  } else {
+    onNavigate(image.button_link as MenuType);
+  }
+};
 
   const handlePrevious = () => {
     setActiveIndex((prev) => (prev - 1 + rollingImages.length) % rollingImages.length);
@@ -74,10 +73,7 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
                 )}
                 {img.button_text && img.button_link && (
                   <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleImageClick(img);
-                    }}
+                    onClick={(e) => handleButtonClick(e, img)}
                     className="bg-kpia-orange text-white px-10 py-4 rounded-full font-black text-xs uppercase tracking-widest hover:bg-orange-600 transition-all shadow-xl pointer-events-auto"
                   >
                     {img.button_text}
